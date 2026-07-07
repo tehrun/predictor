@@ -14,6 +14,9 @@ defmodule Predictor.Betting.Bet do
     field(:result, :string)
     field(:profit_loss, :decimal)
     field(:closing_odds, :decimal)
+    field(:clv_decimal_odds, :decimal)
+    field(:clv_implied_probability, :decimal)
+    field(:clv_percentage, :decimal)
 
     belongs_to(:value_recommendation, ValueRecommendation)
     belongs_to(:fixture, Fixture)
@@ -38,7 +41,10 @@ defmodule Predictor.Betting.Bet do
       :status,
       :result,
       :profit_loss,
-      :closing_odds
+      :closing_odds,
+      :clv_decimal_odds,
+      :clv_implied_probability,
+      :clv_percentage
     ])
     |> validate_required([
       :fixture_id,

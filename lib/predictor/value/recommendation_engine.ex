@@ -9,6 +9,7 @@ defmodule Predictor.Value.RecommendationEngine do
 
   alias Predictor.Catalog.Fixture
   alias Predictor.Odds.OddsSnapshot
+  alias Predictor.Odds
   alias Predictor.Repo
   alias Predictor.Value.{Calculator, FairOdd, ValueRecommendation}
 
@@ -40,6 +41,7 @@ defmodule Predictor.Value.RecommendationEngine do
       |> Enum.map(&recommendation_attrs(&1, opts, recommended_at))
       |> Enum.filter(&passes_thresholds?(&1, opts))
       |> Enum.map(&upsert_recommendation/1)
+      |> Enum.map(&schedule_closing_line_tracking/1)
 
     collect_results(recommendations)
   end
@@ -131,6 +133,13 @@ defmodule Predictor.Value.RecommendationEngine do
       conflict_target: [:fixture_id, :bookmaker_id, :market_id, :selection_id]
     )
   end
+
+  defp schedule_closing_line_tracking({:ok, recommendation}) do
+    Odds.schedule_closing_line_tracking(recommendation)
+    {:ok, recommendation}
+  end
+
+  defp schedule_closing_line_tracking(result), do: result
 
   defp updatable_fields do
     [
