@@ -12,7 +12,8 @@ defmodule Predictor.Odds.CollectOddsWorker do
 
   alias Predictor.Catalog.{Bookmaker, Fixture, League, Sport, Team}
   alias Predictor.Markets.{Market, Selection}
-  alias Predictor.Odds.{OddsSnapshot, Providers.OddsAPI}
+  alias Predictor.Odds
+  alias Predictor.Odds.Providers.OddsAPI
   alias Predictor.Repo
 
   @impl Oban.Worker
@@ -115,9 +116,7 @@ defmodule Predictor.Odds.CollectOddsWorker do
         )
     }
 
-    %OddsSnapshot{}
-    |> OddsSnapshot.changeset(attrs)
-    |> Repo.insert(on_conflict: :nothing, conflict_target: [:external_provider, :external_id])
+    Odds.insert_odds_observation(attrs)
   end
 
   defp upsert_fixture(provider, payload) do

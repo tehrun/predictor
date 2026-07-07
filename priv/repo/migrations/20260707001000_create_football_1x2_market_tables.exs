@@ -113,8 +113,21 @@ defmodule Predictor.Repo.Migrations.CreateFootball1x2MarketTables do
       timestamps(type: :utc_datetime)
     end
 
-    create index(:odds_snapshots, [:fixture_id, :market_id, :captured_at])
-    create index(:odds_snapshots, [:bookmaker_id])
+    create index(:odds_snapshots, [:fixture_id, :market_id, :bookmaker_id, :selection_id, :captured_at],
+             name: :odds_snapshots_lookup_index
+           )
+
+    create index(:odds_snapshots, [:fixture_id, :market_id, :captured_at],
+             name: :odds_snapshots_fixture_market_time_index
+           )
+
+    create index(:odds_snapshots, [:bookmaker_id, :captured_at],
+             name: :odds_snapshots_bookmaker_time_index
+           )
+
+    create index(:odds_snapshots, [:selection_id, :captured_at],
+             name: :odds_snapshots_selection_time_index
+           )
     create unique_index(:odds_snapshots, [:fixture_id, :bookmaker_id, :market_id, :selection_id, :captured_at], name: :odds_snapshots_dedup_index)
     create unique_index(:odds_snapshots, [:external_provider, :external_id], where: "external_provider IS NOT NULL AND external_id IS NOT NULL")
 
