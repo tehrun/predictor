@@ -49,9 +49,14 @@ jobs:
         with:
           otp-version: '27.1'
           elixir-version: '1.18.3'
-          # Avoid mix local.rebar fetching from hex.pm mirrors; install the rebar3 binary directly.
+          # Avoid setup-beam fetching Hex/Rebar from hex.pm mirrors; install Hex from GitHub below
+          # and install the rebar3 binary directly.
+          install-hex: false
           install-rebar: false
           rebar3-version: '3.24.0'
+
+      - name: Install Hex from GitHub
+        run: mix archive.install github hexpm/hex branch latest --force
 
       - name: Restore dependency cache
         uses: actions/cache@v4
