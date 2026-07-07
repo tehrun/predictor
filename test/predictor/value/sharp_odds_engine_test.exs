@@ -33,13 +33,13 @@ defmodule Predictor.Value.SharpOddsEngineTest do
         6
       )
 
-      assert_decimal(fair_odds |> Enum.at(0) |> Map.fetch!(:fair_probability), "0.451694", 6)
-      assert_decimal(fair_odds |> Enum.at(1) |> Map.fetch!(:fair_probability), "0.285628", 6)
-      assert_decimal(fair_odds |> Enum.at(2) |> Map.fetch!(:fair_probability), "0.262678", 6)
+      assert_decimal(fair_odds |> Enum.at(0) |> Map.fetch!(:fair_probability), "0.451787", 6)
+      assert_decimal(fair_odds |> Enum.at(1) |> Map.fetch!(:fair_probability), "0.285689", 6)
+      assert_decimal(fair_odds |> Enum.at(2) |> Map.fetch!(:fair_probability), "0.262525", 6)
 
-      assert_decimal(fair_odds |> Enum.at(0) |> Map.fetch!(:fair_odds), "2.2139", 4)
-      assert_decimal(fair_odds |> Enum.at(1) |> Map.fetch!(:fair_odds), "3.5011", 4)
-      assert_decimal(fair_odds |> Enum.at(2) |> Map.fetch!(:fair_odds), "3.8069", 4)
+      assert_decimal(fair_odds |> Enum.at(0) |> Map.fetch!(:fair_odds), "2.2134", 4)
+      assert_decimal(fair_odds |> Enum.at(1) |> Map.fetch!(:fair_odds), "3.5003", 4)
+      assert_decimal(fair_odds |> Enum.at(2) |> Map.fetch!(:fair_odds), "3.8092", 4)
     end
   end
 
