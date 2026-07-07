@@ -17,6 +17,10 @@ defmodule Predictor.Value.ValueRecommendation do
     field(:recommended_stake, :decimal)
     field(:status, :string, default: "new")
     field(:recommended_at, :utc_datetime)
+    field(:closing_odds, :decimal)
+    field(:clv_decimal_odds, :decimal)
+    field(:clv_implied_probability, :decimal)
+    field(:clv_percentage, :decimal)
 
     belongs_to(:fixture, Fixture)
     belongs_to(:bookmaker, Bookmaker)
@@ -45,7 +49,11 @@ defmodule Predictor.Value.ValueRecommendation do
       :confidence_score,
       :recommended_stake,
       :status,
-      :recommended_at
+      :recommended_at,
+      :closing_odds,
+      :clv_decimal_odds,
+      :clv_implied_probability,
+      :clv_percentage
     ])
     |> validate_required([
       :fixture_id,
@@ -65,6 +73,7 @@ defmodule Predictor.Value.ValueRecommendation do
     |> validate_number(:odds, greater_than: 1)
     |> validate_number(:fair_probability, greater_than: 0, less_than: 1)
     |> validate_number(:fair_odds, greater_than: 1)
+    |> validate_number(:closing_odds, greater_than: 1)
     |> validate_number(:confidence_score, greater_than_or_equal_to: 0, less_than_or_equal_to: 1)
     |> validate_inclusion(:status, [
       "new",
