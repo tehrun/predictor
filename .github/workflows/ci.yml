@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Elixir checks
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: predictor_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      MIX_ENV: test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST: localhost
+      POSTGRES_DB: predictor_test
+      SECRET_KEY_BASE: ci-secret-key-base-ci-secret-key-base-ci-secret-key-base-ci-secret-key-base
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Erlang/OTP and Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: '27.1'
+          elixir-version: '1.18.3'
+
+      - name: Restore dependency cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-
+
+      - name: Install dependencies
+        run: mix deps.get --only test
+
+      - name: Check formatting
+        run: mix format --check-formatted
+
+      - name: Compile with warnings as errors
+        run: mix compile --warnings-as-errors
+
+      - name: Run tests
+        run: mix test
