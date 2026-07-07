@@ -25,6 +25,9 @@ config :logger, :console,
 
 config :phoenix, :json_library, Jason
 
+config :swoosh, :api_client, Swoosh.ApiClient.Finch
+config :swoosh, :finch_name, Predictor.Finch
+
 config :esbuild,
   version: "0.25.4",
   predictor: [
