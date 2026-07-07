@@ -8,10 +8,14 @@ defmodule Predictor.Value.ValueRecommendation do
   alias Predictor.Value.FairOdd
 
   schema "value_recommendations" do
+    field(:odds, :decimal)
+    field(:fair_probability, :decimal)
+    field(:fair_odds, :decimal)
+    field(:ev, :decimal)
     field(:ev_percentage, :decimal)
     field(:confidence_score, :decimal)
     field(:recommended_stake, :decimal)
-    field(:status, :string, default: "open")
+    field(:status, :string, default: "new")
     field(:recommended_at, :utc_datetime)
 
     belongs_to(:fixture, Fixture)
@@ -33,6 +37,10 @@ defmodule Predictor.Value.ValueRecommendation do
       :selection_id,
       :odds_snapshot_id,
       :fair_odds_id,
+      :odds,
+      :fair_probability,
+      :fair_odds,
+      :ev,
       :ev_percentage,
       :confidence_score,
       :recommended_stake,
@@ -44,13 +52,28 @@ defmodule Predictor.Value.ValueRecommendation do
       :bookmaker_id,
       :market_id,
       :selection_id,
+      :odds,
+      :fair_probability,
+      :fair_odds,
+      :ev,
       :ev_percentage,
       :confidence_score,
       :recommended_stake,
       :status,
       :recommended_at
     ])
+    |> validate_number(:odds, greater_than: 1)
+    |> validate_number(:fair_probability, greater_than: 0, less_than: 1)
+    |> validate_number(:fair_odds, greater_than: 1)
     |> validate_number(:confidence_score, greater_than_or_equal_to: 0, less_than_or_equal_to: 1)
+    |> validate_inclusion(:status, [
+      "new",
+      "notified",
+      "accepted",
+      "ignored",
+      "expired",
+      "settled"
+    ])
     |> validate_number(:recommended_stake, greater_than_or_equal_to: 0)
     |> assoc_constraint(:fixture)
     |> assoc_constraint(:bookmaker)
@@ -58,6 +81,9 @@ defmodule Predictor.Value.ValueRecommendation do
     |> assoc_constraint(:selection)
     |> assoc_constraint(:odds_snapshot)
     |> assoc_constraint(:fair_odd)
+    |> unique_constraint([:fixture_id, :bookmaker_id, :market_id, :selection_id],
+      name: :value_recommendations_current_position_index
+    )
     |> unique_constraint([:fixture_id, :bookmaker_id, :market_id, :selection_id, :recommended_at],
       name: :value_recommendations_dedup_index
     )
