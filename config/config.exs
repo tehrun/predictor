@@ -19,6 +19,9 @@ config :predictor, Oban,
   queues: [default: 10, odds: 10, notifications: 5],
   plugins: [Oban.Plugins.Pruner]
 
+config :predictor, Predictor.Value.SharpOddsEngine,
+  reference_bookmaker_slug: System.get_env("SHARP_REFERENCE_BOOKMAKER_SLUG", "pinnacle")
+
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
