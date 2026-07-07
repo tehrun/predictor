@@ -1,0 +1,5 @@
+@import "tailwindcss" source(none);
+@source "../../lib/predictor_web";
+
+.container { margin: 2rem auto; max-width: 960px; font-family: system-ui, sans-serif; }
+.dashboard { padding: 2rem; border: 1px solid #e5e7eb; border-radius: 1rem; }
