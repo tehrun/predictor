@@ -57,7 +57,12 @@ defmodule PredictorWeb.DashboardLive do
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr :if={Enum.empty?(@recommendations)}>
+              <tr :if={@dashboard_error}>
+                <td colspan="10" class="px-4 py-8 text-center text-amber-700">
+                  Value recommendations cannot be loaded until the database issue above is resolved.
+                </td>
+              </tr>
+              <tr :if={!@dashboard_error and Enum.empty?(@recommendations)}>
                 <td colspan="10" class="px-4 py-8 text-center text-slate-500">
                   No qualifying value bets found for today.
                 </td>
