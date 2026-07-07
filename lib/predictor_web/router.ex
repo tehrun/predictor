@@ -18,6 +18,9 @@ defmodule PredictorWeb.Router do
     pipe_through(:browser)
 
     live("/", DashboardLive, :index)
+    live("/dashboard", DashboardLive, :index)
+    live("/fixtures/:id", FixtureLive, :show)
+    live("/bets", BetsLive, :index)
   end
 
   scope "/", PredictorWeb do
