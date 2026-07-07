@@ -6,12 +6,17 @@ defmodule PredictorWeb.DashboardLive do
   alias Predictor.Repo
   alias Predictor.Value.ValueRecommendation
 
+  require Logger
+
   @impl true
   def mount(_params, _session, socket) do
+    {recommendations, dashboard_error} = todays_value_bets()
+
     {:ok,
      socket
      |> assign(:page_title, "Value dashboard")
-     |> assign(:recommendations, todays_value_bets())}
+     |> assign(:recommendations, recommendations)
+     |> assign(:dashboard_error, dashboard_error)}
   end
 
   @impl true
@@ -25,6 +30,14 @@ defmodule PredictorWeb.DashboardLive do
           Server-rendered LiveView table of positive expected-value opportunities that are still actionable today.
         </p>
       </header>
+
+      <div
+        :if={@dashboard_error}
+        class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900"
+      >
+        <p class="font-semibold">Dashboard data is temporarily unavailable.</p>
+        <p>{@dashboard_error}</p>
+      </div>
 
       <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div class="overflow-x-auto">
@@ -79,20 +92,27 @@ defmodule PredictorWeb.DashboardLive do
     start_of_day = DateTime.new!(today, ~T[00:00:00], "Etc/UTC")
     end_of_day = DateTime.new!(today, ~T[23:59:59], "Etc/UTC")
 
-    from(r in ValueRecommendation,
-      join: f in assoc(r, :fixture),
-      where: f.kickoff_at >= ^start_of_day and f.kickoff_at <= ^end_of_day,
-      where: r.status in ["new", "notified", "accepted"],
-      order_by: [desc: r.ev_percentage, desc: r.confidence_score],
-      preload: [
-        fixture: [:league, :home_team, :away_team],
-        market: [],
-        selection: [],
-        bookmaker: []
-      ],
-      limit: 100
-    )
-    |> Repo.all()
+    recommendations =
+      from(r in ValueRecommendation,
+        join: f in assoc(r, :fixture),
+        where: f.kickoff_at >= ^start_of_day and f.kickoff_at <= ^end_of_day,
+        where: r.status in ["new", "notified", "accepted"],
+        order_by: [desc: r.ev_percentage, desc: r.confidence_score],
+        preload: [
+          fixture: [:league, :home_team, :away_team],
+          market: [],
+          selection: [],
+          bookmaker: []
+        ],
+        limit: 100
+      )
+      |> Repo.all()
+
+    {recommendations, nil}
+  rescue
+    error in [DBConnection.ConnectionError, Ecto.QueryError, Postgrex.Error] ->
+      Logger.error("Unable to load dashboard recommendations: #{Exception.message(error)}")
+      {[], "Please make sure the database is reachable and migrations have been run."}
   end
 
   defp fixture_name(fixture), do: "#{fixture.home_team.name} vs #{fixture.away_team.name}"
