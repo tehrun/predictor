@@ -39,6 +39,7 @@ jobs:
       POSTGRES_HOST: localhost
       POSTGRES_DB: predictor_test
       SECRET_KEY_BASE: ci-secret-key-base-ci-secret-key-base-ci-secret-key-base-ci-secret-key-base
+      HEX_CACERTS_PATH: /etc/ssl/certs/ca-certificates.crt
 
     steps:
       - name: Check out repository
@@ -47,7 +48,8 @@ jobs:
       - name: Set up Erlang/OTP and Elixir
         uses: erlef/setup-beam@v1
         with:
-          otp-version: '27.1'
+          # Use a current OTP 27 patch release to avoid TLS certificate validation issues seen with 27.1.
+          otp-version: '27.3'
           elixir-version: '1.18.3'
           # Avoid setup-beam fetching Hex/Rebar from hex.pm mirrors; install Hex from GitHub below
           # and install the rebar3 binary directly.
