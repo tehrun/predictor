@@ -32,3 +32,11 @@ Predictor is a Phoenix + PostgreSQL application scaffold for sports-betting odds
 * `lib/predictor_web/live/` - LiveView dashboard pages.
 
 The health check endpoint is available at `GET /health`.
+
+## Real-money recommendation guardrails
+
+Outputs are informational only and are not guaranteed to produce profit. Before any real-money use, create an explicit bankroll configuration with user-supplied bankroll amount, currency, daily/weekly/monthly recommended stake limits, and a per-bet maximum stake cap. Optional cooldown settings can suppress recommendations after a configured number of consecutive losses.
+
+The system records an audit trail for generated recommendations and accepted bets. Odds-provider Terms of Service must be reviewed for scraping, storage, and redistribution before storing or sharing provider odds beyond permitted use. Jurisdiction-specific legal review is required before building or enabling any bet-placement automation.
+
+Automated betting should remain disabled until the strategy has demonstrated positive closing-line value and all legal/provider requirements are understood and documented.
