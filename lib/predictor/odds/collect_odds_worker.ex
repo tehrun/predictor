@@ -15,6 +15,7 @@ defmodule Predictor.Odds.CollectOddsWorker do
   alias Predictor.Odds
   alias Predictor.Odds.Providers.OddsAPI
   alias Predictor.Repo
+  alias Predictor.Value.{RecommendationEngine, SharpOddsEngine}
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: args}) do
@@ -24,7 +25,16 @@ defmodule Predictor.Odds.CollectOddsWorker do
     with {:fixtures, {:ok, fixtures}} <- {:fixtures, provider.fetch_fixtures(opts)},
          {:odds, {:ok, odds_events}} <- {:odds, provider.fetch_odds(opts)} do
       Enum.each(fixtures, &upsert_fixture(provider, &1))
-      Enum.each(odds_events, &persist_odds_event(provider, &1))
+
+      odds_events
+      |> Enum.map(&persist_odds_event(provider, &1))
+      |> Enum.flat_map(fn
+        {:ok, fixture_id} -> [fixture_id]
+        {:error, _reason} -> []
+      end)
+      |> Enum.uniq()
+      |> Enum.each(&generate_value_recommendations/1)
+
       :ok
     else
       {stage, {:error, reason}} ->
@@ -50,10 +60,28 @@ defmodule Predictor.Odds.CollectOddsWorker do
           |> Enum.each(&persist_market(provider, fixture, bookmaker, &1))
         end
       end)
+
+      {:ok, fixture.id}
     rescue
       exception ->
         Logger.error(
           "Failed to persist odds for provider event #{inspect(event["id"])}: #{Exception.message(exception)}"
+        )
+
+        {:error, exception}
+    end
+  end
+
+  defp generate_value_recommendations(fixture_id) do
+    with {:ok, _fair_odds} <- SharpOddsEngine.calculate_and_store_fair_odds(fixture_id),
+         {:ok, recommendations} <- RecommendationEngine.create_or_update_recommendations() do
+      Logger.info(
+        "Generated #{length(recommendations)} value recommendations after odds ingestion for fixture=#{fixture_id}"
+      )
+    else
+      {:error, reason} ->
+        Logger.warning(
+          "Skipped value recommendation generation for fixture=#{fixture_id}: #{inspect(reason)}"
         )
     end
   end
