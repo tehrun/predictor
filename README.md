@@ -6,8 +6,9 @@ Predictor is a Phoenix + PostgreSQL application scaffold for sports-betting odds
 
 1. Copy `.env.example` to `.env` and fill in secrets.
 2. Export the variables in your shell, or load them with your preferred dotenv tool.
-3. Install dependencies with `mix setup` once Hex access is available.
-4. Start Phoenix with `mix phx.server` or inside IEx with `iex -S mix phx.server`.
+3. Install dependencies with `mix setup` once Hex access is available. This creates the database, runs migrations, and seeds a small demo recommendation so the dashboard has data.
+4. If dependencies are already installed, run `mix ecto.setup` to create/migrate/seed the local database.
+5. Start Phoenix with `mix phx.server` or inside IEx with `iex -S mix phx.server`.
 
 ## Runtime environment variables
 

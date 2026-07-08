@@ -15,6 +15,11 @@ defmodule Predictor.Repo.Migrations.AddRecommendationEngineFields do
       )
     end
 
+    execute(
+      "UPDATE value_recommendations SET status = 'new' WHERE status = 'open'",
+      "UPDATE value_recommendations SET status = 'open' WHERE status = 'new'"
+    )
+
     create(
       unique_index(
         :value_recommendations,
