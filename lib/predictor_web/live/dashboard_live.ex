@@ -101,7 +101,7 @@ defmodule PredictorWeb.DashboardLive do
       from(r in ValueRecommendation,
         join: f in assoc(r, :fixture),
         where: f.kickoff_at >= ^start_of_day and f.kickoff_at <= ^end_of_day,
-        where: r.status in ["new", "notified", "accepted"],
+        where: r.status in ["new", "notified", "accepted", "open"],
         order_by: [desc: r.ev_percentage, desc: r.confidence_score],
         preload: [
           fixture: [:league, :home_team, :away_team],
