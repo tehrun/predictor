@@ -138,9 +138,24 @@ defmodule PredictorWeb.DashboardLive do
   end
 
   defp dashboard_data do
-    start_at = DateTime.utc_now() |> DateTime.add(-1, :hour) |> DateTime.truncate(:second)
+    start_at = DateTime.utc_now() |> DateTime.add(-60 * 60, :second) |> DateTime.truncate(:second)
     end_at = DateTime.add(start_at, 14 * 24 * 60 * 60, :second)
 
+    {recommendations, recommendations_error} = load_recommendations(start_at, end_at)
+
+    {latest_odds, latest_odds_error} =
+      if Enum.empty?(recommendations) do
+        load_latest_captured_odds()
+      else
+        {[], nil}
+      end
+
+    dashboard_error = dashboard_error(recommendations_error, latest_odds_error, latest_odds)
+
+    {recommendations, latest_odds, dashboard_error}
+  end
+
+  defp load_recommendations(start_at, end_at) do
     recommendations =
       from(r in ValueRecommendation,
         join: f in assoc(r, :fixture),
@@ -157,36 +172,52 @@ defmodule PredictorWeb.DashboardLive do
       )
       |> Repo.all()
 
-    latest_odds =
-      if Enum.empty?(recommendations), do: latest_captured_odds(start_at, end_at), else: []
-
-    {recommendations, latest_odds, nil}
+    {recommendations, nil}
   rescue
     error in [DBConnection.ConnectionError, Ecto.QueryError, Postgrex.Error] ->
-      Logger.error("Unable to load dashboard recommendations: #{Exception.message(error)}")
-      {[], [], "Please make sure the database is reachable and migrations have been run."}
+      Logger.warning("Unable to load dashboard recommendations: #{Exception.message(error)}")
+      {[], error}
   end
 
-  defp latest_captured_odds(start_at, end_at) do
+  defp load_latest_captured_odds() do
+    {latest_captured_odds(), nil}
+  rescue
+    error in [DBConnection.ConnectionError, Ecto.QueryError, Postgrex.Error] ->
+      Logger.error("Unable to load dashboard odds snapshots: #{Exception.message(error)}")
+      {[], error}
+  end
+
+  defp dashboard_error(nil, nil, _latest_odds), do: nil
+  defp dashboard_error(_recommendations_error, nil, latest_odds) when latest_odds != [], do: nil
+
+  defp dashboard_error(_recommendations_error, _latest_odds_error, _latest_odds),
+    do: "Please make sure the database is reachable and migrations have been run."
+
+  defp latest_captured_odds do
+    latest_ids =
+      from(o in OddsSnapshot,
+        distinct: [o.fixture_id, o.bookmaker_id, o.market_id, o.selection_id],
+        order_by: [
+          asc: o.fixture_id,
+          asc: o.bookmaker_id,
+          asc: o.market_id,
+          asc: o.selection_id,
+          desc: o.captured_at,
+          desc: o.id
+        ],
+        select: o.id,
+        limit: 100
+      )
+
     from(o in OddsSnapshot,
-      join: f in assoc(o, :fixture),
-      where: f.kickoff_at >= ^start_at and f.kickoff_at <= ^end_at,
-      distinct: [o.fixture_id, o.bookmaker_id, o.market_id, o.selection_id],
-      order_by: [
-        asc: o.fixture_id,
-        asc: o.bookmaker_id,
-        asc: o.market_id,
-        asc: o.selection_id,
-        desc: o.captured_at,
-        desc: o.id
-      ],
+      where: o.id in subquery(latest_ids),
+      order_by: [desc: o.captured_at, desc: o.id],
       preload: [
         fixture: [:league, :home_team, :away_team],
         market: [],
         selection: [],
         bookmaker: []
-      ],
-      limit: 100
+      ]
     )
     |> Repo.all()
   end
