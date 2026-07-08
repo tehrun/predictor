@@ -1,7 +1,10 @@
 import Config
 
 if config_env() == :prod do
-  database_url = System.fetch_env!("DATABASE_URL")
+  database_url =
+    System.get_env("DATABASE_URL") ||
+      "ecto://#{URI.encode_www_form(System.get_env("POSTGRES_USER", "predictor"))}:#{URI.encode_www_form(System.fetch_env!("POSTGRES_PASSWORD"))}@#{System.get_env("POSTGRES_HOST", "db")}:#{System.get_env("POSTGRES_PORT", "5432")}/#{System.get_env("POSTGRES_DB", "predictor_prod")}"
+
   secret_key_base = System.fetch_env!("SECRET_KEY_BASE")
   host = System.get_env("PHX_HOST", "example.com")
   port = String.to_integer(System.get_env("PORT", "4000"))
@@ -9,7 +12,7 @@ if config_env() == :prod do
   config :predictor, Predictor.Repo,
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE", "10")),
-    ssl: System.get_env("ECTO_SSL", "true") == "true"
+    ssl: System.get_env("ECTO_SSL", "false") == "true"
 
   config :predictor, PredictorWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
