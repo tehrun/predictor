@@ -1,9 +1,11 @@
 <header class="border-b border-slate-200 bg-white">
-  <nav class="mx-auto flex max-w-7xl items-center gap-4 px-6 py-4 text-sm font-semibold text-slate-700">
-    <.link navigate={~p"/dashboard"} class="text-emerald-700 hover:text-emerald-800">Predictor</.link>
-    <.link navigate={~p"/dashboard"} class="hover:text-emerald-700">Dashboard</.link>
-    <.link navigate={~p"/bets"} class="hover:text-emerald-700">Bets</.link>
-    <.link navigate={~p"/settings/scanner"} class="hover:text-emerald-700">Scanner settings</.link>
+  <nav class="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-4 text-sm font-semibold sm:gap-4 sm:px-6">
+    <.link navigate={~p"/dashboard"} class="mr-1 rounded-full px-3 py-2 text-emerald-700 hover:text-emerald-800 sm:mr-2">
+      Predictor
+    </.link>
+    <.nav_link current={assigns} to={~p"/dashboard"} match_paths={[~p"/"]}>Dashboard</.nav_link>
+    <.nav_link current={assigns} to={~p"/bets"}>Bets</.nav_link>
+    <.nav_link current={assigns} to={~p"/settings/scanner"}>Scanner settings</.nav_link>
   </nav>
 </header>
 <main class="container">

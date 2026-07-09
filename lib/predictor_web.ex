@@ -26,6 +26,8 @@ defmodule PredictorWeb do
       use Phoenix.LiveView,
         layout: {PredictorWeb.Layouts, :app}
 
+      on_mount(PredictorWeb.Layouts)
+
       unquote(html_helpers())
     end
   end
