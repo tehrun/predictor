@@ -135,7 +135,18 @@ defmodule PredictorWeb.DashboardLive do
                 <td class="whitespace-nowrap px-4 py-3 text-slate-700">{odds.selection.name}</td>
                 <td class="whitespace-nowrap px-4 py-3 text-slate-700">{odds.bookmaker.name}</td>
                 <td class="whitespace-nowrap px-4 py-3 text-right font-semibold">{format_decimal(odds.decimal_odds)}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-right">{format_datetime(odds.captured_at)}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-right">
+                  <span
+                    class={[
+                      "inline-flex rounded-full px-2 py-1 text-xs font-medium",
+                      stale_snapshot?(odds.captured_at) && "bg-amber-50 text-amber-700",
+                      !stale_snapshot?(odds.captured_at) && "text-slate-600"
+                    ]}
+                    title={format_datetime(odds.captured_at)}
+                  >
+                    {format_relative_time(odds.captured_at)}
+                  </span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -233,6 +244,35 @@ defmodule PredictorWeb.DashboardLive do
   defp fixture_name(fixture), do: "#{fixture.home_team.name} vs #{fixture.away_team.name}"
   defp format_datetime(nil), do: "—"
   defp format_datetime(%DateTime{} = dt), do: Calendar.strftime(dt, "%b %-d, %H:%M UTC")
+
+  defp format_relative_time(nil), do: "Updated —"
+
+  defp format_relative_time(%DateTime{} = dt) do
+    seconds_ago = max(DateTime.diff(DateTime.utc_now(), dt, :second), 0)
+
+    cond do
+      seconds_ago < 60 ->
+        "Updated just now"
+
+      seconds_ago < 60 * 60 ->
+        "Updated #{div(seconds_ago, 60)} #{pluralize(div(seconds_ago, 60), "minute")} ago"
+
+      seconds_ago < 24 * 60 * 60 ->
+        "Updated #{div(seconds_ago, 60 * 60)} #{pluralize(div(seconds_ago, 60 * 60), "hour")} ago"
+
+      true ->
+        "Updated #{div(seconds_ago, 24 * 60 * 60)} #{pluralize(div(seconds_ago, 24 * 60 * 60), "day")} ago"
+    end
+  end
+
+  defp stale_snapshot?(nil), do: false
+
+  defp stale_snapshot?(%DateTime{} = dt),
+    do: DateTime.diff(DateTime.utc_now(), dt, :hour) >= 6
+
+  defp pluralize(1, unit), do: unit
+  defp pluralize(_count, unit), do: unit <> "s"
+
   defp format_decimal(nil), do: "—"
   defp format_decimal(decimal), do: decimal |> Decimal.round(2) |> Decimal.to_string(:normal)
   defp format_percent(nil), do: "—"
