@@ -25,3 +25,23 @@ config :predictor, :external_apis,
   odds_api_key: System.get_env("ODDS_API_KEY"),
   telegram_bot_token: System.get_env("TELEGRAM_BOT_TOKEN"),
   telegram_chat_id: System.get_env("TELEGRAM_CHAT_ID")
+
+config :predictor, :scanner,
+  enabled_sports: System.get_env("SCANNER_ENABLED_SPORTS", ""),
+  enabled_leagues: System.get_env("SCANNER_ENABLED_LEAGUES", ""),
+  enabled_markets: System.get_env("SCANNER_ENABLED_MARKETS", ""),
+  enabled_bookmakers: System.get_env("SCANNER_ENABLED_BOOKMAKERS", ""),
+  sharp_reference_source:
+    System.get_env(
+      "SCANNER_SHARP_REFERENCE_SOURCE",
+      System.get_env("SHARP_REFERENCE_BOOKMAKER_SLUG", "pinnacle")
+    ),
+  minimum_ev_threshold: System.get_env("SCANNER_MINIMUM_EV_THRESHOLD", "0.05"),
+  minimum_confidence_threshold: System.get_env("SCANNER_MINIMUM_CONFIDENCE_THRESHOLD", "0.50"),
+  minimum_odds: System.get_env("SCANNER_MINIMUM_ODDS"),
+  maximum_odds: System.get_env("SCANNER_MAXIMUM_ODDS"),
+  kelly_fraction: System.get_env("SCANNER_KELLY_FRACTION", "0.25"),
+  max_stake_percentage: System.get_env("SCANNER_MAX_STAKE_PERCENTAGE", "0.01"),
+  telegram_alert_threshold: System.get_env("SCANNER_TELEGRAM_ALERT_THRESHOLD", "0.05"),
+  odds_collection_frequency_seconds:
+    System.get_env("SCANNER_ODDS_COLLECTION_FREQUENCY_SECONDS", "300")

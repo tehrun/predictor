@@ -13,6 +13,7 @@ defmodule Predictor.Value.SharpOddsEngine do
   alias Predictor.Markets.Market
   alias Predictor.Odds.OddsSnapshot
   alias Predictor.Repo
+  alias Predictor.Scanner.Config, as: ScannerConfig
   alias Predictor.Value.FairOdd
 
   @source_engine "sharp_odds_engine"
@@ -78,18 +79,12 @@ defmodule Predictor.Value.SharpOddsEngine do
   end
 
   defp reference_bookmaker(opts) do
-    slug = Keyword.get(opts, :bookmaker_slug) || configured_bookmaker_slug()
+    slug = Keyword.get(opts, :bookmaker_slug) || ScannerConfig.load().sharp_reference_source
 
     case slug && Repo.get_by(Bookmaker, slug: slug) do
       %Bookmaker{} = bookmaker -> {:ok, bookmaker}
       nil -> {:error, :missing_reference_bookmaker}
     end
-  end
-
-  defp configured_bookmaker_slug do
-    :predictor
-    |> Application.get_env(__MODULE__, [])
-    |> Keyword.get(:reference_bookmaker_slug)
   end
 
   defp one_x_two_market do

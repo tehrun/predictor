@@ -15,19 +15,21 @@ defmodule Predictor.Odds.CollectOddsWorker do
   alias Predictor.Odds
   alias Predictor.Odds.Providers.OddsAPI
   alias Predictor.Repo
+  alias Predictor.Scanner.Config, as: ScannerConfig
   alias Predictor.Value.{RecommendationEngine, SharpOddsEngine}
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: args}) do
     provider = provider_module(args)
     opts = provider_opts(args)
+    scanner_config = ScannerConfig.load()
 
     with {:fixtures, {:ok, fixtures}} <- {:fixtures, provider.fetch_fixtures(opts)},
          {:odds, {:ok, odds_events}} <- {:odds, provider.fetch_odds(opts)} do
       Enum.each(fixtures, &upsert_fixture(provider, &1))
 
       odds_events
-      |> Enum.map(&persist_odds_event(provider, &1))
+      |> Enum.map(&persist_odds_event(provider, &1, scanner_config))
       |> Enum.flat_map(fn
         {:ok, fixture_id} -> [fixture_id]
         {:error, _reason} -> []
@@ -46,22 +48,28 @@ defmodule Predictor.Odds.CollectOddsWorker do
     end
   end
 
-  defp persist_odds_event(provider, event) do
+  defp persist_odds_event(provider, event, scanner_config) do
     try do
       fixture = upsert_fixture(provider, event)
 
-      event
-      |> Map.get("bookmakers", [])
-      |> Enum.each(fn bookmaker_payload ->
-        with {:ok, bookmaker} <- upsert_bookmaker(provider.normalize_bookmaker(bookmaker_payload)) do
-          bookmaker_payload
-          |> Map.get("markets", [])
-          |> Enum.filter(&(&1["key"] == "h2h"))
-          |> Enum.each(&persist_market(provider, fixture, bookmaker, &1))
-        end
-      end)
+      if fixture_enabled?(fixture, scanner_config) do
+        event
+        |> Map.get("bookmakers", [])
+        |> Enum.each(fn bookmaker_payload ->
+          with {:ok, bookmaker} <-
+                 upsert_bookmaker(provider.normalize_bookmaker(bookmaker_payload)),
+               true <- ScannerConfig.enabled?(scanner_config.enabled_bookmakers, bookmaker.slug) do
+            bookmaker_payload
+            |> Map.get("markets", [])
+            |> Enum.filter(&(&1["key"] == "h2h"))
+            |> Enum.each(&persist_market(provider, fixture, bookmaker, &1, scanner_config))
+          end
+        end)
 
-      {:ok, fixture.id}
+        {:ok, fixture.id}
+      else
+        {:error, :disabled_fixture}
+      end
     rescue
       exception ->
         Logger.error(
@@ -73,8 +81,13 @@ defmodule Predictor.Odds.CollectOddsWorker do
   end
 
   defp generate_value_recommendations(fixture_id) do
+    scanner_config = ScannerConfig.load()
+
     with {:ok, _fair_odds} <- SharpOddsEngine.calculate_and_store_fair_odds(fixture_id),
-         {:ok, recommendations} <- RecommendationEngine.create_or_update_recommendations() do
+         {:ok, recommendations} <-
+           RecommendationEngine.create_or_update_recommendations(
+             ScannerConfig.recommendation_opts(scanner_config)
+           ) do
       Logger.info(
         "Generated #{length(recommendations)} value recommendations after odds ingestion for fixture=#{fixture_id}"
       )
@@ -86,9 +99,10 @@ defmodule Predictor.Odds.CollectOddsWorker do
     end
   end
 
-  defp persist_market(provider, fixture, bookmaker, market_payload) do
+  defp persist_market(provider, fixture, bookmaker, market_payload, scanner_config) do
     with {:ok, market} <-
-           upsert_market(provider.normalize_market(market_payload), fixture.league.sport_id) do
+           upsert_market(provider.normalize_market(market_payload), fixture.league.sport_id),
+         true <- ScannerConfig.enabled?(scanner_config.enabled_markets, market.key) do
       market_payload
       |> Map.get("outcomes", [])
       |> Enum.each(fn outcome ->
@@ -171,6 +185,11 @@ defmodule Predictor.Odds.CollectOddsWorker do
       )
 
     Repo.preload(fixture, [:home_team, league: :sport])
+  end
+
+  defp fixture_enabled?(fixture, scanner_config) do
+    ScannerConfig.enabled?(scanner_config.enabled_sports, fixture.league.sport.slug) and
+      ScannerConfig.enabled?(scanner_config.enabled_leagues, fixture.league.slug)
   end
 
   defp upsert_sport(attrs),
