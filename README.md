@@ -21,6 +21,18 @@ Predictor is a Phoenix + PostgreSQL application scaffold for sports-betting odds
 | `PHX_HOST`, `PORT` | Endpoint host and port. |
 | `ODDS_API_KEY` | Odds provider API key. |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Telegram notification credentials. |
+| `SCANNER_ENABLED_SPORTS` | Comma-separated enabled sport slugs; empty allows all sports. |
+| `SCANNER_ENABLED_LEAGUES` | Comma-separated enabled league slugs; empty allows all leagues. |
+| `SCANNER_ENABLED_MARKETS` | Comma-separated enabled market keys; empty allows all markets. |
+| `SCANNER_ENABLED_BOOKMAKERS` | Comma-separated enabled bookmaker slugs; empty allows all bookmakers. |
+| `SCANNER_SHARP_REFERENCE_SOURCE` | Bookmaker slug used as the sharp reference source; falls back to `SHARP_REFERENCE_BOOKMAKER_SLUG` or `pinnacle`. |
+| `SCANNER_MINIMUM_EV_THRESHOLD` | Minimum expected-value threshold for recommendations. |
+| `SCANNER_MINIMUM_CONFIDENCE_THRESHOLD` | Confidence score assigned to scanner recommendations. |
+| `SCANNER_MINIMUM_ODDS`, `SCANNER_MAXIMUM_ODDS` | Optional decimal-odds bounds for scanner recommendations. |
+| `SCANNER_KELLY_FRACTION` | Fractional Kelly multiplier used by scanner staking logic. |
+| `SCANNER_MAX_STAKE_PERCENTAGE` | Maximum stake percentage used by scanner staking logic. |
+| `SCANNER_TELEGRAM_ALERT_THRESHOLD` | Minimum EV threshold for Telegram scanner alerts. |
+| `SCANNER_ODDS_COLLECTION_FREQUENCY_SECONDS` | Odds collection cadence in seconds. |
 
 ## Application layout
 
