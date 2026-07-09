@@ -69,14 +69,14 @@ defmodule PredictorWeb.DashboardLive do
 
       <.form for={%{}} as={:filters} phx-change="filter" class="sticky top-0 z-10 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
         <div class="grid gap-3 md:grid-cols-4 xl:grid-cols-8">
-          <select name="filters[date]" class="rounded-xl border-slate-300 text-sm"><option value="">Any date</option><option value="today" selected={@filters["date"]=="today"}>Today</option><option value="tomorrow" selected={@filters["date"]=="tomorrow"}>Tomorrow</option><option value="7d" selected={@filters["date"]=="7d"}>Next 7 days</option></select>
+          <select name="filters[date]" class="rounded-xl border-slate-300 text-sm"><option value="">Any date</option><option value="today" selected={@filters["date"] == "today"}>Today</option><option value="tomorrow" selected={@filters["date"] == "tomorrow"}>Tomorrow</option><option value="7d" selected={@filters["date"] == "7d"}>Next 7 days</option></select>
           <input name="filters[sport]" value={@filters["sport"]} placeholder="Sport" class="rounded-xl border-slate-300 text-sm" />
           <input name="filters[league]" value={@filters["league"]} placeholder="League" class="rounded-xl border-slate-300 text-sm" />
           <input name="filters[market]" value={@filters["market"]} placeholder="Market" class="rounded-xl border-slate-300 text-sm" />
           <input name="filters[bookmaker]" value={@filters["bookmaker"]} placeholder="Bookmaker" class="rounded-xl border-slate-300 text-sm" />
           <input name="filters[min_ev]" value={@filters["min_ev"]} placeholder="Min EV %" type="number" class="rounded-xl border-slate-300 text-sm" />
           <input name="filters[min_odds]" value={@filters["min_odds"]} placeholder="Min odds" type="number" step="0.01" class="rounded-xl border-slate-300 text-sm" />
-          <select name="filters[sort]" class="rounded-xl border-slate-300 text-sm"><option value="ev">Sort by EV</option><option value="kickoff" selected={@filters["sort"]=="kickoff"}>Kickoff</option></select>
+          <select name="filters[sort]" class="rounded-xl border-slate-300 text-sm"><option value="ev">Sort by EV</option><option value="kickoff" selected={@filters["sort"] == "kickoff"}>Kickoff</option></select>
         </div>
         <div class="mt-3 flex items-center justify-between text-sm"><span class="text-slate-600"><%= @summary.count %> results</span><button type="button" phx-click="clear_filters" class="font-semibold text-slate-700">Clear all</button></div>
       </.form>
