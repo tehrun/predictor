@@ -34,29 +34,137 @@ defmodule PredictorWeb.ScannerConfigLive do
         </div>
       </header>
 
-      <.form for={@form} phx-change="validate" phx-submit="save" class="space-y-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div class="grid gap-6 md:grid-cols-2">
-          <.field form={@form} field={:enabled_sports} label="Enabled sports" help="Comma-separated slugs. Blank allows all. Example: football" />
-          <.field form={@form} field={:enabled_leagues} label="Enabled leagues" help="Comma-separated league slugs. Blank allows all." />
-          <.field form={@form} field={:enabled_markets} label="Enabled markets" help="Comma-separated market keys. Example: 1x2" />
-          <.field form={@form} field={:enabled_bookmakers} label="Enabled bookmakers" help="Comma-separated bookmaker slugs. Blank allows all." />
-          <.field form={@form} field={:sharp_reference_source} label="Sharp reference bookmaker" help="Bookmaker slug used for fair-odds generation. Example: pinnacle" />
-          <.field form={@form} field={:odds_collection_frequency_seconds} label="Collection frequency seconds" type="number" help="Informational unless scheduler code/cron uses it. 21600 = 6 hours." />
-        </div>
+      <.form
+        for={@form}
+        phx-change="validate"
+        phx-submit="save"
+        class="space-y-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+      >
+        <.settings_group
+          title="Enabled sources and filters"
+          description="Choose which sports, leagues, markets, and bookmakers the scanner can consider. Blank list fields mean “allow all”."
+        >
+          <div class="grid gap-6 md:grid-cols-2">
+            <.field
+              form={@form}
+              field={:enabled_sports}
+              label="Enabled sports"
+              help="Comma-separated slugs. Blank allows all. Example: football"
+            />
+            <.field
+              form={@form}
+              field={:enabled_leagues}
+              label="Enabled leagues"
+              help="Comma-separated league slugs. Blank allows all."
+            />
+            <.field
+              form={@form}
+              field={:enabled_markets}
+              label="Enabled markets"
+              help="Comma-separated market keys. Example: 1x2"
+            />
+            <.field
+              form={@form}
+              field={:enabled_bookmakers}
+              label="Enabled bookmakers"
+              help="Comma-separated bookmaker slugs. Blank allows all."
+            />
+            <.field
+              form={@form}
+              field={:sharp_reference_source}
+              label="Sharp reference bookmaker"
+              help="Bookmaker slug used for fair-odds generation. Example: pinnacle"
+            />
+          </div>
+        </.settings_group>
 
-        <div class="grid gap-6 md:grid-cols-3">
-          <.field form={@form} field={:minimum_ev_threshold} label="Minimum EV" type="number" step="0.001" help="0.05 means +5% EV." />
-          <.field form={@form} field={:minimum_confidence_threshold} label="Confidence score" type="number" step="0.01" help="Stored on generated recommendations, 0 to 1." />
-          <.field form={@form} field={:telegram_alert_threshold} label="Telegram alert EV" type="number" step="0.001" help="Minimum EV before alerting." />
-          <.field form={@form} field={:minimum_odds} label="Minimum odds" type="number" step="0.01" help="Optional lower decimal-odds bound." />
-          <.field form={@form} field={:maximum_odds} label="Maximum odds" type="number" step="0.01" help="Optional upper decimal-odds bound." />
-          <.field form={@form} field={:kelly_fraction} label="Kelly fraction" type="number" step="0.01" help="0.25 = quarter Kelly." />
-          <.field form={@form} field={:max_stake_percentage} label="Max stake percentage" type="number" step="0.001" help="0.01 = cap at 1% bankroll." />
-        </div>
+        <.settings_group
+          title="Thresholds and staking values"
+          description="Control the recommendation cutoffs, odds bounds, and bankroll sizing defaults stored with generated recommendations."
+        >
+          <div class="grid gap-6 md:grid-cols-3">
+            <.field
+              form={@form}
+              field={:minimum_ev_threshold}
+              label="Minimum EV"
+              type="number"
+              step="0.001"
+              help="0.05 means +5% EV."
+            />
+            <.field
+              form={@form}
+              field={:minimum_confidence_threshold}
+              label="Confidence score"
+              type="number"
+              step="0.01"
+              help="Stored on generated recommendations, 0 to 1."
+            />
+            <.field
+              form={@form}
+              field={:minimum_odds}
+              label="Minimum odds"
+              type="number"
+              step="0.01"
+              help="Optional lower decimal-odds bound."
+            />
+            <.field
+              form={@form}
+              field={:maximum_odds}
+              label="Maximum odds"
+              type="number"
+              step="0.01"
+              help="Optional upper decimal-odds bound."
+            />
+            <.field
+              form={@form}
+              field={:kelly_fraction}
+              label="Kelly fraction"
+              type="number"
+              step="0.01"
+              help="0.25 = quarter Kelly."
+            />
+            <.field
+              form={@form}
+              field={:max_stake_percentage}
+              label="Max stake percentage"
+              type="number"
+              step="0.001"
+              help="0.01 = cap at 1% bankroll."
+            />
+          </div>
+        </.settings_group>
 
-        <div class="flex items-center justify-between border-t border-slate-200 pt-6">
-          <p class="text-sm text-slate-500">Blank list fields mean “allow all”. Optional odds fields may stay blank.</p>
-          <button type="submit" class="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
+        <.settings_group
+          title="Alerts and frequency"
+          description="Set alerting sensitivity and document the intended collection cadence for scheduled scanner jobs."
+        >
+          <div class="grid gap-6 md:grid-cols-2">
+            <.field
+              form={@form}
+              field={:telegram_alert_threshold}
+              label="Telegram alert EV"
+              type="number"
+              step="0.001"
+              help="Minimum EV before alerting."
+            />
+            <.field
+              form={@form}
+              field={:odds_collection_frequency_seconds}
+              label="Collection frequency seconds"
+              type="number"
+              help="Informational unless scheduler code/cron uses it. 21600 = 6 hours."
+            />
+          </div>
+        </.settings_group>
+
+        <div class="flex flex-col gap-4 border-t border-slate-200 pt-6 md:flex-row md:items-center md:justify-between">
+          <p class="text-sm leading-6 text-slate-500">
+            Blank list fields mean “allow all”. Optional odds fields may stay blank.
+          </p>
+          <button
+            type="submit"
+            class="w-full rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 md:w-auto"
+          >
             Save scanner settings
           </button>
         </div>
@@ -108,9 +216,27 @@ defmodule PredictorWeb.ScannerConfigLive do
         value={Phoenix.HTML.Form.normalize_value(@type, @form[@field].value)}
         class="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
       />
-      <p :if={@help} class="text-xs text-slate-500">{@help}</p>
+      <p :if={@help} class="text-xs leading-5 text-slate-400">{@help}</p>
       <p :for={error <- errors_for(@form, @field)} class="text-xs font-medium text-rose-700">{error}</p>
     </div>
+    """
+  end
+
+  attr(:title, :string, required: true)
+  attr(:description, :string, required: true)
+  slot(:inner_block, required: true)
+
+  defp settings_group(assigns) do
+    ~H"""
+    <section class="space-y-5 rounded-xl border border-slate-200 bg-slate-50/60 p-5">
+      <header class="space-y-1">
+        <h2 class="text-base font-semibold text-slate-900">{@title}</h2>
+        <p class="text-sm leading-6 text-slate-500">{@description}</p>
+      </header>
+      <div class="rounded-lg border border-slate-200 bg-white p-5">
+        {render_slot(@inner_block)}
+      </div>
+    </section>
     """
   end
 
