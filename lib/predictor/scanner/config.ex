@@ -1,4 +1,6 @@
 defmodule Predictor.Scanner.Config do
+  import Ecto.Query
+
   @moduledoc """
   Runtime configuration for scanner behavior.
 
@@ -48,9 +50,12 @@ defmodule Predictor.Scanner.Config do
             telegram_alert_threshold: @default_telegram_alert_threshold,
             odds_collection_frequency_seconds: @default_odds_collection_frequency_seconds
 
-  @doc "Loads scanner settings from application config."
+  alias Predictor.Repo
+  alias Predictor.Scanner.Setting
+
+  @doc "Loads scanner settings from the persisted singleton row, falling back to runtime env config."
   def load do
-    config = Application.get_env(:predictor, :scanner, [])
+    config = persisted_config() || Application.get_env(:predictor, :scanner, [])
 
     %__MODULE__{
       enabled_sports: list(config, :enabled_sports),
@@ -77,6 +82,31 @@ defmodule Predictor.Scanner.Config do
     }
   end
 
+  @doc "Returns the editable singleton scanner setting, seeded from runtime config when absent."
+  def get_setting do
+    case Repo.get_by(Setting, singleton_key: Setting.singleton_key()) do
+      nil -> struct_from_config(Application.get_env(:predictor, :scanner, []))
+      setting -> setting
+    end
+  rescue
+    _error in [DBConnection.ConnectionError, Ecto.QueryError, Postgrex.Error] ->
+      struct_from_config(Application.get_env(:predictor, :scanner, []))
+  end
+
+  @doc "Returns a scanner setting changeset for forms."
+  def change_setting(%Setting{} = setting, attrs \\ %{}), do: Setting.changeset(setting, attrs)
+
+  @doc "Creates or updates the singleton scanner setting."
+  def save_setting(attrs) do
+    existing =
+      Repo.get_by(Setting, singleton_key: Setting.singleton_key()) ||
+        struct_from_config(Application.get_env(:predictor, :scanner, []))
+
+    existing
+    |> Setting.changeset(attrs)
+    |> Repo.insert_or_update()
+  end
+
   @doc "Returns true when a slug/id is allowed by the configured list; empty means all are allowed."
   def enabled?(_configured, nil), do: true
   def enabled?([], _value), do: true
@@ -91,6 +121,64 @@ defmodule Predictor.Scanner.Config do
       confidence_score: config.minimum_confidence_threshold
     ]
     |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+  end
+
+  defp persisted_config do
+    if repo_started?() and table_exists?() do
+      Setting
+      |> where([s], s.singleton_key == ^Setting.singleton_key())
+      |> limit(1)
+      |> Repo.one()
+      |> case do
+        nil -> nil
+        setting -> Setting.to_config(setting)
+      end
+    end
+  rescue
+    _error in [DBConnection.ConnectionError, Ecto.QueryError, Postgrex.Error] -> nil
+  end
+
+  defp repo_started?, do: Process.whereis(Repo) != nil
+
+  defp table_exists? do
+    %{rows: [[exists]]} =
+      Ecto.Adapters.SQL.query!(
+        Repo,
+        "select to_regclass('public.scanner_settings') is not null",
+        []
+      )
+
+    exists
+  end
+
+  defp struct_from_config(config) do
+    %Setting{}
+    |> Setting.changeset(%{
+      enabled_sports: Keyword.get(config, :enabled_sports, ""),
+      enabled_leagues: Keyword.get(config, :enabled_leagues, ""),
+      enabled_markets: Keyword.get(config, :enabled_markets, ""),
+      enabled_bookmakers: Keyword.get(config, :enabled_bookmakers, ""),
+      sharp_reference_source:
+        Keyword.get(config, :sharp_reference_source, @default_sharp_reference_source),
+      minimum_ev_threshold:
+        Keyword.get(config, :minimum_ev_threshold, @default_minimum_ev_threshold),
+      minimum_confidence_threshold:
+        Keyword.get(config, :minimum_confidence_threshold, @default_minimum_confidence_threshold),
+      minimum_odds: Keyword.get(config, :minimum_odds, @default_minimum_odds),
+      maximum_odds: Keyword.get(config, :maximum_odds, @default_maximum_odds),
+      kelly_fraction: Keyword.get(config, :kelly_fraction, @default_kelly_fraction),
+      max_stake_percentage:
+        Keyword.get(config, :max_stake_percentage, @default_max_stake_percentage),
+      telegram_alert_threshold:
+        Keyword.get(config, :telegram_alert_threshold, @default_telegram_alert_threshold),
+      odds_collection_frequency_seconds:
+        Keyword.get(
+          config,
+          :odds_collection_frequency_seconds,
+          @default_odds_collection_frequency_seconds
+        )
+    })
+    |> Ecto.Changeset.apply_changes()
   end
 
   defp list(config, key) do
