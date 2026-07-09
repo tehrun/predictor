@@ -9,26 +9,45 @@ defmodule PredictorWeb.FixtureLive do
   alias Predictor.Value.{FairOdd, ValueRecommendation}
 
   @impl true
-  def mount(%{"id" => id}, _session, socket) do
-    fixture = load_fixture!(id)
+  def mount(params, _session, socket) do
+    with %{"id" => id} <- params,
+         {:ok, fixture} <- load_fixture(id) do
+      odds_history = odds_history(id)
 
-    odds_history = odds_history(id)
-
-    {:ok,
-     socket
-     |> assign(:page_title, fixture_name(fixture))
-     |> assign(:fixture, fixture)
-     |> assign(:odds_history, odds_history)
-     |> assign(:best_odds, best_odds(odds_history))
-     |> assign(:fair_probabilities, fair_probabilities(id))
-     |> assign(:recommendation_history, recommendation_history(id))
-     |> assign(:closing_lines, closing_lines(id))}
+      {:ok,
+       socket
+       |> assign(:page_title, fixture_name(fixture))
+       |> assign(:not_found, false)
+       |> assign(:fixture, fixture)
+       |> assign(:odds_history, odds_history)
+       |> assign(:best_odds, best_odds(odds_history))
+       |> assign(:fair_probabilities, fair_probabilities(id))
+       |> assign(:recommendation_history, recommendation_history(id))
+       |> assign(:closing_lines, closing_lines(id))}
+    else
+      _ ->
+        {:ok,
+         socket
+         |> assign(:page_title, "Fixture not found")
+         |> assign(:not_found, true)}
+    end
   end
 
   @impl true
   def render(assigns) do
     ~H"""
     <section class="mx-auto max-w-7xl space-y-8 px-6 py-8">
+      <div :if={@not_found} class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-600">
+        <div class="mx-auto max-w-md space-y-1">
+          <p class="font-medium text-slate-700">Fixture not found.</p>
+          <p class="text-sm text-slate-500">Check the fixture link or return to the dashboard.</p>
+          <.link navigate={~p"/dashboard"} class="inline-flex pt-2 font-semibold text-emerald-700 hover:underline">
+            ← Dashboard
+          </.link>
+        </div>
+      </div>
+
+      <div :if={!@not_found} class="space-y-8">
       <header class="space-y-4">
         <.link navigate={~p"/dashboard"} class="text-sm font-semibold text-emerald-700 hover:underline">← Dashboard</.link>
         <div class="space-y-3">
@@ -90,6 +109,7 @@ defmodule PredictorWeb.FixtureLive do
           <:col :let={row} label="Closing odds" align="right">{format_decimal(row.decimal_odds)}</:col>
         </.data_table>
       </.panel>
+      </div>
     </section>
     """
   end
@@ -157,8 +177,14 @@ defmodule PredictorWeb.FixtureLive do
     """
   end
 
-  defp load_fixture!(id),
-    do: Repo.get!(Fixture, id) |> Repo.preload([:league, :home_team, :away_team])
+  defp load_fixture(id) do
+    case Repo.get(Fixture, id) do
+      nil -> :error
+      fixture -> {:ok, Repo.preload(fixture, [:league, :home_team, :away_team])}
+    end
+  rescue
+    Ecto.Query.CastError -> :error
+  end
 
   defp odds_history(id),
     do:

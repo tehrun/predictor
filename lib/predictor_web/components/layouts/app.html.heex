@@ -1,11 +1,19 @@
 <header class="border-b border-slate-200 bg-white">
-  <nav class="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-4 text-sm font-semibold sm:gap-4 sm:px-6">
-    <.link navigate={~p"/dashboard"} class="mr-1 rounded-full px-3 py-2 text-emerald-700 hover:text-emerald-800 sm:mr-2">
-      Predictor
+  <nav class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 text-sm font-semibold sm:px-6">
+    <div class="flex items-center gap-6">
+      <.nav_link current={assigns} to={~p"/dashboard"} match_paths={[~p"/"]}>Predictions</.nav_link>
+      <.nav_link current={assigns} to={~p"/bets"}>Bets</.nav_link>
+    </div>
+    <.link
+      navigate={~p"/settings/scanner"}
+      class="rounded-full p-2 text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-700"
+      aria-label="Scanner settings"
+    >
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.654.85.074.036.147.074.22.114.322.18.714.185 1.04.013l1.151-.606a1.125 1.125 0 0 1 1.37.241l1.833 1.833c.389.389.489 1.005.241 1.37l-.606 1.151c-.172.326-.167.718.013 1.04.04.073.078.146.114.22.164.341.476.591.85.654l1.281.213c.542.09.94.56.94 1.11v2.593c0 .55-.398 1.02-.94 1.11l-1.281.213c-.374.063-.686.313-.85.654a6.51 6.51 0 0 1-.114.22c-.18.322-.185.714-.013 1.04l.606 1.151c.248.365.148.981-.241 1.37l-1.833 1.833a1.125 1.125 0 0 1-1.37.241l-1.151-.606c-.326-.172-.718-.167-1.04.013-.073.04-.146.078-.22.114-.341.164-.591.476-.654.85l-.213 1.281c-.09.542-.56.94-1.11.94h-2.593c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.654-.85a6.51 6.51 0 0 1-.22-.114c-.322-.18-.714-.185-1.04-.013l-1.151.606a1.125 1.125 0 0 1-1.37-.241l-1.833-1.833a1.125 1.125 0 0 1-.241-1.37l.606-1.151c.172-.326.167-.718-.013-1.04a6.51 6.51 0 0 1-.114-.22c-.164-.341-.476-.591-.85-.654l-1.281-.213A1.125 1.125 0 0 1 2.25 14.297v-2.593c0-.55.398-1.02.94-1.11l1.281-.213c.374-.063.686-.313.85-.654.036-.074.074-.147.114-.22.18-.322.185-.714.013-1.04l-.606-1.151a1.125 1.125 0 0 1 .241-1.37l1.833-1.833a1.125 1.125 0 0 1 1.37-.241l1.151.606c.326.172.718.167 1.04-.013.073-.04.146-.078.22-.114.341-.164.591-.476.654-.85Z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+      </svg>
     </.link>
-    <.nav_link current={assigns} to={~p"/dashboard"} match_paths={[~p"/"]}>Dashboard</.nav_link>
-    <.nav_link current={assigns} to={~p"/bets"}>Bets</.nav_link>
-    <.nav_link current={assigns} to={~p"/settings/scanner"}>Scanner settings</.nav_link>
   </nav>
 </header>
 <main class="min-h-screen bg-slate-50/30">

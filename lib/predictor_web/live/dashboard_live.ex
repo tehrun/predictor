@@ -144,9 +144,10 @@ defmodule PredictorWeb.DashboardLive do
                 <th class="px-4 py-3">Fixture</th>
                 <th class="px-4 py-3">League</th>
                 <th class="px-4 py-3">Market</th>
-                <th class="px-4 py-3">Selection</th>
                 <th class="px-4 py-3">Bookmaker</th>
-                <th class="px-4 py-3 text-right">Odds</th>
+                <th class="px-4 py-3 text-right">Home</th>
+                <th class="px-4 py-3 text-right">Draw</th>
+                <th class="px-4 py-3 text-right">Away</th>
                 <th class="px-4 py-3 text-right">Captured</th>
               </tr>
             </thead>
@@ -160,9 +161,10 @@ defmodule PredictorWeb.DashboardLive do
                 </td>
                 <td class="whitespace-nowrap px-4 py-3 text-slate-700">{odds.fixture.league.name}</td>
                 <td class="whitespace-nowrap px-4 py-3 text-slate-700">{odds.market.name}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-700">{odds.selection.name}</td>
                 <td class="whitespace-nowrap px-4 py-3 text-slate-700">{odds.bookmaker.name}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-right font-semibold">{format_decimal(odds.decimal_odds)}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-right font-semibold">{selection_odds(odds, "Home")}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-right font-semibold">{selection_odds(odds, "Draw")}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-right font-semibold">{selection_odds(odds, "Away")}</td>
                 <td class="whitespace-nowrap px-4 py-3 text-right">
                   <span
                     class={[
@@ -297,6 +299,35 @@ defmodule PredictorWeb.DashboardLive do
       ]
     )
     |> Repo.all()
+    |> Enum.group_by(&{&1.fixture_id, &1.bookmaker_id, &1.market_id})
+    |> Enum.map(fn {_fixture_bookmaker_market, snapshots} ->
+      latest_snapshot = Enum.max_by(snapshots, &snapshot_sort_key/1)
+
+      %{
+        fixture_id: latest_snapshot.fixture_id,
+        fixture: latest_snapshot.fixture,
+        market: latest_snapshot.market,
+        bookmaker: latest_snapshot.bookmaker,
+        captured_at: latest_snapshot.captured_at,
+        selections: Map.new(snapshots, &{&1.selection.name, &1})
+      }
+    end)
+    |> Enum.sort_by(&snapshot_group_sort_key/1, :desc)
+  end
+
+  defp snapshot_sort_key(%{captured_at: %DateTime{} = captured_at, id: id}),
+    do: {DateTime.to_unix(captured_at, :microsecond), id}
+
+  defp snapshot_group_sort_key(%{captured_at: %DateTime{} = captured_at, fixture_id: fixture_id}),
+    do: {DateTime.to_unix(captured_at, :microsecond), fixture_id}
+
+  defp selection_odds(%{selections: selections}, selection_name) do
+    selections
+    |> Map.get(selection_name)
+    |> case do
+      nil -> "—"
+      snapshot -> format_decimal(snapshot.decimal_odds)
+    end
   end
 
   defp fixture_name(fixture), do: "#{fixture.home_team.name} vs #{fixture.away_team.name}"
