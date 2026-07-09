@@ -12,11 +12,14 @@ defmodule PredictorWeb.FixtureLive do
   def mount(%{"id" => id}, _session, socket) do
     fixture = load_fixture!(id)
 
+    odds_history = odds_history(id)
+
     {:ok,
      socket
      |> assign(:page_title, fixture_name(fixture))
      |> assign(:fixture, fixture)
-     |> assign(:odds_history, odds_history(id))
+     |> assign(:odds_history, odds_history)
+     |> assign(:best_odds, best_odds(odds_history))
      |> assign(:fair_probabilities, fair_probabilities(id))
      |> assign(:recommendation_history, recommendation_history(id))
      |> assign(:closing_lines, closing_lines(id))}
@@ -26,10 +29,16 @@ defmodule PredictorWeb.FixtureLive do
   def render(assigns) do
     ~H"""
     <section class="mx-auto max-w-7xl space-y-8 px-6 py-8">
-      <header class="space-y-2">
+      <header class="space-y-4">
         <.link navigate={~p"/dashboard"} class="text-sm font-semibold text-emerald-700 hover:underline">← Dashboard</.link>
-        <h1 class="text-3xl font-bold text-slate-900">{fixture_name(@fixture)}</h1>
-        <p class="text-slate-600">{@fixture.league.name} · {format_datetime(@fixture.kickoff_at)} · {@fixture.status}</p>
+        <div class="space-y-3">
+          <h1 class="text-3xl font-bold text-slate-900">{fixture_name(@fixture)}</h1>
+          <div class="flex flex-wrap gap-2 text-sm">
+            <.metadata_badge label="League" value={@fixture.league.name} />
+            <.metadata_badge label="Kickoff" value={format_datetime(@fixture.kickoff_at)} />
+            <.metadata_badge label="Status" value={@fixture.status} />
+          </div>
+        </div>
       </header>
 
       <.panel title="Odds history by bookmaker">
@@ -38,7 +47,14 @@ defmodule PredictorWeb.FixtureLive do
           <:col :let={row} label="Bookmaker">{row.bookmaker.name}</:col>
           <:col :let={row} label="Market">{row.market.name}</:col>
           <:col :let={row} label="Selection">{row.selection.name}</:col>
-          <:col :let={row} label="Odds" align="right">{format_decimal(row.decimal_odds)}</:col>
+          <:col :let={row} label="Odds" align="right">
+            <span class={[
+              "inline-flex rounded-full px-2 py-0.5 font-semibold",
+              best_odds?(@best_odds, row) && "bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-200"
+            ]}>
+              {format_decimal(row.decimal_odds)}
+            </span>
+          </:col>
         </.data_table>
       </.panel>
 
@@ -83,10 +99,22 @@ defmodule PredictorWeb.FixtureLive do
 
   defp panel(assigns) do
     ~H"""
-    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 class="mb-4 text-xl font-semibold text-slate-900">{@title}</h2>
+    <section class="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <h2 class="text-xl font-semibold text-slate-900">{@title}</h2>
       {render_slot(@inner_block)}
     </section>
+    """
+  end
+
+  attr(:label, :string, required: true)
+  attr(:value, :string, required: true)
+
+  defp metadata_badge(assigns) do
+    ~H"""
+    <span class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700 shadow-sm">
+      <span class="font-semibold text-slate-500">{@label}:</span>
+      <span class="font-medium text-slate-900">{@value}</span>
+    </span>
     """
   end
 
@@ -100,7 +128,32 @@ defmodule PredictorWeb.FixtureLive do
 
   defp data_table(assigns) do
     ~H"""
-    <div class="overflow-x-auto"><table class="min-w-full divide-y divide-slate-200 text-sm"><thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600"><tr><th :for={col <- @col} class={["px-4 py-3", col[:align] == "right" && "text-right"]}>{col.label}</th></tr></thead><tbody class="divide-y divide-slate-100"><tr :if={Enum.empty?(@rows)}><td colspan={length(@col)} class="px-4 py-6 text-center text-slate-500">{@empty}</td></tr><tr :for={row <- @rows} class="hover:bg-slate-50"><td :for={col <- @col} class={["whitespace-nowrap px-4 py-3 text-slate-700", col[:align] == "right" && "text-right"]}>{render_slot(col, row)}</td></tr></tbody></table></div>
+    <div class="overflow-x-auto rounded-lg border border-slate-200">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+          <tr>
+            <th :for={col <- @col} class={["px-4 py-3", col[:align] == "right" && "text-right"]}>
+              {col.label}
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr :if={Enum.empty?(@rows)}>
+            <td colspan={length(@col)} class="px-4 py-10 text-center">
+              <div class="mx-auto max-w-md space-y-1">
+                <p class="font-medium text-slate-700">{@empty}</p>
+                <p class="text-sm text-slate-500">Check back after the next data refresh for this fixture.</p>
+              </div>
+            </td>
+          </tr>
+          <tr :for={row <- @rows} class="hover:bg-slate-50">
+            <td :for={col <- @col} class={["whitespace-nowrap px-4 py-3 text-slate-700", col[:align] == "right" && "text-right"]}>
+              {render_slot(col, row)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     """
   end
 
@@ -146,6 +199,21 @@ defmodule PredictorWeb.FixtureLive do
           preload: [:bookmaker, :market, :selection]
         )
       )
+
+  defp best_odds(rows) do
+    rows
+    |> Enum.group_by(&{&1.market_id, &1.selection_id})
+    |> Enum.flat_map(fn {_market_selection, rows} ->
+      best_decimal = rows |> Enum.map(& &1.decimal_odds) |> Enum.max(Decimal)
+
+      rows
+      |> Enum.filter(&(Decimal.compare(&1.decimal_odds, best_decimal) == :eq))
+      |> Enum.map(& &1.id)
+    end)
+    |> MapSet.new()
+  end
+
+  defp best_odds?(best_odds, row), do: MapSet.member?(best_odds, row.id)
 
   defp fixture_name(fixture), do: "#{fixture.home_team.name} vs #{fixture.away_team.name}"
   defp format_datetime(nil), do: "—"
