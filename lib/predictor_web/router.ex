@@ -19,6 +19,10 @@ defmodule PredictorWeb.Router do
 
     live("/", DashboardLive, :index)
     live("/dashboard", DashboardLive, :index)
+    live("/opportunities", DashboardLive, :index)
+    live("/fixtures", SimplePageLive, :fixtures)
+    live("/performance", SimplePageLive, :performance)
+    live("/status", SimplePageLive, :status)
     live("/fixtures/:id", FixtureLive, :show)
     live("/bets", BetsLive, :index)
     live("/settings/scanner", ScannerConfigLive, :edit)

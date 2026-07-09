@@ -1,23 +1,30 @@
-<header class="border-b border-slate-200 bg-white">
-  <nav class="mx-auto flex max-w-7xl items-center gap-4 px-6 py-4 text-sm font-semibold text-slate-700">
-    <.link navigate={~p"/dashboard"} class="text-emerald-700 hover:text-emerald-800">Predictor</.link>
-    <.link navigate={~p"/dashboard"} class="hover:text-emerald-700">Dashboard</.link>
-    <.link navigate={~p"/bets"} class="hover:text-emerald-700">Bets</.link>
-    <.link navigate={~p"/settings/scanner"} class="hover:text-emerald-700">Scanner settings</.link>
-  </nav>
-</header>
-<main class="container">
-  <div
-    :if={Phoenix.Flash.get(@flash, :info)}
-    class="mx-auto mt-4 max-w-5xl rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-medium text-emerald-800"
-  >
-    {Phoenix.Flash.get(@flash, :info)}
-  </div>
-  <div
-    :if={Phoenix.Flash.get(@flash, :error)}
-    class="mx-auto mt-4 max-w-5xl rounded-xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-medium text-rose-800"
-  >
-    {Phoenix.Flash.get(@flash, :error)}
-  </div>
-  {@inner_content}
-</main>
+<div class="min-h-screen bg-slate-100 text-slate-900">
+  <aside class="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-slate-200 bg-white p-5 shadow-sm lg:flex" aria-label="Primary navigation">
+    <.link navigate={~p"/dashboard"} class="flex items-center gap-3 text-2xl font-black tracking-tight text-slate-950"><span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600 text-white">B</span>BSharp</.link>
+    <nav class="mt-8 space-y-6 text-sm font-semibold">
+      <div><p class="mb-2 px-3 text-xs font-bold uppercase tracking-wide text-slate-400">Product</p>
+        <.nav_item href={~p"/dashboard"} label="Overview" icon="⌂" current={@page_title in ["Value Betting Dashboard", "Value dashboard"]}/>
+        <.nav_item href={~p"/opportunities"} label="Opportunities" icon="◇" current={@page_title == "Opportunities"}/>
+        <.nav_item href={~p"/bets"} label="My Bets" icon="✓" current={@page_title == "My Bets" || @page_title == "Tracked bets"}/>
+        <.nav_item href={~p"/fixtures"} label="Fixtures" icon="◫" current={@page_title == "Fixtures"}/>
+        <.nav_item href={~p"/performance"} label="Performance" icon="↗" current={@page_title == "Performance"}/>
+      </div>
+      <div><p class="mb-2 px-3 text-xs font-bold uppercase tracking-wide text-slate-400">Configuration</p>
+        <.nav_item href={~p"/settings/scanner"} label="Scanner Settings" icon="⚙" current={@page_title == "Scanner settings"}/>
+        <.nav_item href={~p"/status"} label="System Status" icon="●" current={@page_title == "System Status"}/>
+      </div>
+    </nav>
+    <div class="mt-auto"><.scanner_status last_update={assigns[:last_odds_update]} /></div>
+  </aside>
+
+  <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+    <div class="flex items-center justify-between gap-3"><.link navigate={~p"/dashboard"} class="text-lg font-black">BSharp</.link><div class="min-w-0 flex-1 text-center text-sm font-semibold truncate"><%= assigns[:page_title] || "Dashboard" %></div><.status_badge status={scanner_state(assigns[:last_odds_update])}/></div>
+    <nav class="mt-3 flex gap-2 overflow-x-auto text-sm font-semibold"><.link navigate={~p"/dashboard"} class="rounded-full bg-slate-100 px-3 py-2">Overview</.link><.link navigate={~p"/opportunities"} class="rounded-full bg-slate-100 px-3 py-2">Opportunities</.link><.link navigate={~p"/bets"} class="rounded-full bg-slate-100 px-3 py-2">Bets</.link><.link navigate={~p"/settings/scanner"} class="rounded-full bg-slate-100 px-3 py-2">Settings</.link></nav>
+  </header>
+
+  <main class="lg:pl-72"><div class="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
+    <div :if={Phoenix.Flash.get(@flash, :info)} class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-medium text-emerald-800"><%= Phoenix.Flash.get(@flash, :info) %></div>
+    <div :if={Phoenix.Flash.get(@flash, :error)} class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-medium text-rose-800"><%= Phoenix.Flash.get(@flash, :error) %></div>
+    <%= @inner_content %>
+  </div></main>
+</div>

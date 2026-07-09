@@ -43,6 +43,8 @@ defmodule PredictorWeb do
       import Phoenix.HTML
       alias Phoenix.LiveView.JS
       alias PredictorWeb.Layouts
+      import PredictorWeb.UIComponents
+      import PredictorWeb.FormatHelpers
       unquote(verified_routes())
     end
   end

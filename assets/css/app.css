@@ -1,5 +1,6 @@
 @import "tailwindcss" source(none);
 @source "../../lib/predictor_web";
 
-.container { margin: 2rem auto; max-width: 960px; font-family: system-ui, sans-serif; }
-.dashboard { padding: 2rem; border: 1px solid #e5e7eb; border-radius: 1rem; }
+:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
+* { font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition-duration: 0.01ms !important; } }

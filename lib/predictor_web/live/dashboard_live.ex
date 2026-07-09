@@ -1,174 +1,104 @@
 defmodule PredictorWeb.DashboardLive do
   use PredictorWeb, :live_view
-
   import Ecto.Query
-
   alias Predictor.Repo
   alias Predictor.Odds.OddsSnapshot
   alias Predictor.Value.ValueRecommendation
-
   require Logger
 
   @impl true
-  def mount(_params, _session, socket) do
-    {recommendations, latest_odds, dashboard_error} = dashboard_data()
+  def mount(_params, _session, socket),
+    do: {:ok, assign(socket, :page_title, "Value Betting Dashboard")}
 
-    {:ok,
-     socket
-     |> assign(:page_title, "Value dashboard")
-     |> assign(:recommendations, recommendations)
-     |> assign(:latest_odds, latest_odds)
-     |> assign(:dashboard_error, dashboard_error)}
+  @impl true
+  def handle_params(params, _uri, socket) do
+    {recs, latest, error} = dashboard_data(params)
+
+    groups =
+      recs
+      |> Enum.group_by(& &1.fixture)
+      |> Enum.map(fn {f, rs} ->
+        {f, Enum.sort_by(rs, &Decimal.to_float(&1.ev_percentage || Decimal.new(0)), :desc)}
+      end)
+
+    {:noreply,
+     assign(socket,
+       recommendations: recs,
+       fixture_groups: groups,
+       last_odds_update: latest,
+       dashboard_error: error,
+       filters: params,
+       summary: summary(recs, latest)
+     )}
   end
+
+  @impl true
+  def handle_event("filter", %{"filters" => f}, socket),
+    do: {:noreply, push_patch(socket, to: ~p"/dashboard?#{clean(f)}")}
+
+  def handle_event("clear_filters", _, socket),
+    do: {:noreply, push_patch(socket, to: ~p"/dashboard")}
+
+  def handle_event("track_bet", _, socket),
+    do:
+      {:noreply,
+       put_flash(socket, :info, "Tracking workflow is ready for backend placement status.")}
+
+  def handle_event("dismiss", _, socket),
+    do: {:noreply, put_flash(socket, :info, "Opportunity dismissed for this session.")}
 
   @impl true
   def render(assigns) do
     ~H"""
-    <section class="mx-auto max-w-7xl space-y-8 px-6 py-8">
-      <header class="space-y-2">
-        <p class="text-sm font-semibold uppercase tracking-wide text-emerald-600">Dashboard</p>
-        <h1 class="text-3xl font-bold text-slate-900">Upcoming qualifying value bets</h1>
-        <p class="text-slate-600">
-          Server-rendered LiveView table of positive expected-value opportunities for upcoming fixtures.
-        </p>
-        <div class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
-          <p class="font-semibold">Informational only — no guaranteed profit.</p>
-          <p>
-            Recommendations must be capped by an explicitly configured bankroll, daily/weekly/monthly limits,
-            and a per-bet maximum. Do not enable automated bet placement until positive closing-line value is proven
-            and provider terms plus jurisdiction-specific legal requirements have been reviewed.
-          </p>
-        </div>
-      </header>
+    <section class="space-y-8">
+      <.page_header title="Value Betting Dashboard" eyebrow="Overview" description="Best positive-EV opportunities grouped by fixture, with stake, confidence, bookmaker, and freshness visible at a glance.">
+        <:actions><.link navigate={~p"/opportunities"} class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">View all opportunities</.link></:actions>
+      </.page_header>
 
-      <div
-        :if={@dashboard_error}
-        class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900"
-      >
-        <p class="font-semibold">Dashboard data is temporarily unavailable.</p>
-        <p>{@dashboard_error}</p>
+      <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"><b>About value betting:</b> Recommendations are informational and depend on your bankroll and limits. Bet responsibly; no edge guarantees profit.</div>
+      <div :if={@dashboard_error} class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><b>Data temporarily unavailable.</b> <%= @dashboard_error %></div>
+
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        <.stat_card label="Opportunities" value={to_string(@summary.count)} hint="Qualifying now" tone="emerald" />
+        <.stat_card label="Highest EV" value={ev(@summary.highest_ev)} hint="Best fixture edge" tone="emerald" />
+        <.stat_card label="Recommended stake" value={currency(@summary.total_stake)} hint="Total suggested" />
+        <.stat_card label="Open exposure" value={currency(@summary.total_stake)} hint="If all tracked" tone="amber" />
+        <.stat_card label="Odds updated" value={short_datetime(@summary.last_update)} hint={relative(@summary.last_update)} />
+        <.stat_card label="Scanner" value={String.capitalize(scanner_state(@summary.last_update))} hint="Freshness indicator" tone="emerald" />
       </div>
 
-      <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-slate-200 text-sm">
-            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-              <tr>
-                <th class="px-4 py-3">Fixture</th>
-                <th class="px-4 py-3">League</th>
-                <th class="px-4 py-3">Market</th>
-                <th class="px-4 py-3">Selection</th>
-                <th class="px-4 py-3">Bookmaker</th>
-                <th class="px-4 py-3 text-right">Current odds</th>
-                <th class="px-4 py-3 text-right">Fair odds</th>
-                <th class="px-4 py-3 text-right">EV %</th>
-                <th class="px-4 py-3 text-right">Stake</th>
-                <th class="px-4 py-3 text-right">Confidence</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr :if={@dashboard_error}>
-                <td colspan="10" class="px-4 py-8 text-center text-amber-700">
-                  Value recommendations cannot be loaded until the database issue above is resolved.
-                </td>
-              </tr>
-              <tr :if={!@dashboard_error and Enum.empty?(@recommendations)}>
-                <td colspan="10" class="px-4 py-8 text-center text-slate-500">
-                  No qualifying value bets found for upcoming fixtures yet. Run odds ingestion and the dashboard will populate once recommendations are generated.
-                </td>
-              </tr>
-              <tr :for={rec <- @recommendations} class="hover:bg-slate-50">
-                <td class="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
-                  <.link navigate={~p"/fixtures/#{rec.fixture_id}"} class="text-emerald-700 hover:underline">
-                    {fixture_name(rec.fixture)}
-                  </.link>
-                  <div class="text-xs font-normal text-slate-500">{format_datetime(rec.fixture.kickoff_at)}</div>
-                </td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-700">{rec.fixture.league.name}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-700">{rec.market.name}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-700">{rec.selection.name}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-700">{rec.bookmaker.name}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-right font-semibold">{format_decimal(rec.odds)}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-right">{format_decimal(rec.fair_odds)}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-right text-emerald-700 font-semibold">{format_percent(rec.ev_percentage)}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-right">{format_decimal(rec.recommended_stake)}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-right">{format_rating(rec.confidence_score)}</td>
-              </tr>
-            </tbody>
-          </table>
+      <.form for={%{}} as={:filters} phx-change="filter" class="sticky top-0 z-10 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
+        <div class="grid gap-3 md:grid-cols-4 xl:grid-cols-8">
+          <select name="filters[date]" class="rounded-xl border-slate-300 text-sm"><option value="">Any date</option><option value="today" selected={@filters["date"]=="today"}>Today</option><option value="tomorrow" selected={@filters["date"]=="tomorrow"}>Tomorrow</option><option value="7d" selected={@filters["date"]=="7d"}>Next 7 days</option></select>
+          <input name="filters[sport]" value={@filters["sport"]} placeholder="Sport" class="rounded-xl border-slate-300 text-sm" />
+          <input name="filters[league]" value={@filters["league"]} placeholder="League" class="rounded-xl border-slate-300 text-sm" />
+          <input name="filters[market]" value={@filters["market"]} placeholder="Market" class="rounded-xl border-slate-300 text-sm" />
+          <input name="filters[bookmaker]" value={@filters["bookmaker"]} placeholder="Bookmaker" class="rounded-xl border-slate-300 text-sm" />
+          <input name="filters[min_ev]" value={@filters["min_ev"]} placeholder="Min EV %" type="number" class="rounded-xl border-slate-300 text-sm" />
+          <input name="filters[min_odds]" value={@filters["min_odds"]} placeholder="Min odds" type="number" step="0.01" class="rounded-xl border-slate-300 text-sm" />
+          <select name="filters[sort]" class="rounded-xl border-slate-300 text-sm"><option value="ev">Sort by EV</option><option value="kickoff" selected={@filters["sort"]=="kickoff"}>Kickoff</option></select>
         </div>
-      </div>
+        <div class="mt-3 flex items-center justify-between text-sm"><span class="text-slate-600"><%= @summary.count %> results</span><button type="button" phx-click="clear_filters" class="font-semibold text-slate-700">Clear all</button></div>
+      </.form>
 
-      <div
-        :if={!@dashboard_error and Enum.empty?(@recommendations) and !Enum.empty?(@latest_odds)}
-        class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
-      >
-        <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
-          <h2 class="font-semibold text-slate-900">Latest captured odds</h2>
-          <p class="text-sm text-slate-600">
-            Odds ingestion is reaching the database. Value recommendations will appear above after fair odds are generated and pass the EV threshold.
-          </p>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-slate-200 text-sm">
-            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-              <tr>
-                <th class="px-4 py-3">Fixture</th>
-                <th class="px-4 py-3">League</th>
-                <th class="px-4 py-3">Market</th>
-                <th class="px-4 py-3">Selection</th>
-                <th class="px-4 py-3">Bookmaker</th>
-                <th class="px-4 py-3 text-right">Odds</th>
-                <th class="px-4 py-3 text-right">Captured</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr :for={odds <- @latest_odds} class="hover:bg-slate-50">
-                <td class="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
-                  <.link navigate={~p"/fixtures/#{odds.fixture_id}"} class="text-emerald-700 hover:underline">
-                    {fixture_name(odds.fixture)}
-                  </.link>
-                  <div class="text-xs font-normal text-slate-500">{format_datetime(odds.fixture.kickoff_at)}</div>
-                </td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-700">{odds.fixture.league.name}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-700">{odds.market.name}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-700">{odds.selection.name}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-700">{odds.bookmaker.name}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-right font-semibold">{format_decimal(odds.decimal_odds)}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-right">{format_datetime(odds.captured_at)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <div class="space-y-5">
+        <.empty_state :if={!@dashboard_error and Enum.empty?(@fixture_groups)} title="No matching value bets" message="No opportunities currently match your filters. Odds may be captured without positive EV, or the scanner may not have completed its first run." action="Open scanner settings" href={~p"/settings/scanner"}/>
+        <.fixture_card :for={{fixture, recs} <- @fixture_groups} fixture={fixture} recommendations={recs}/>
       </div>
     </section>
     """
   end
 
-  defp dashboard_data do
-    start_at = DateTime.utc_now() |> DateTime.add(-60 * 60, :second) |> DateTime.truncate(:second)
-    end_at = DateTime.add(start_at, 14 * 24 * 60 * 60, :second)
+  defp dashboard_data(params) do
+    start_at = DateTime.utc_now() |> DateTime.add(-3600, :second) |> DateTime.truncate(:second)
+    end_at = DateTime.add(start_at, if(params["date"] == "7d", do: 7, else: 14) * 86400, :second)
 
-    {recommendations, recommendations_error} = load_recommendations(start_at, end_at)
-
-    {latest_odds, latest_odds_error} =
-      if Enum.empty?(recommendations) do
-        load_latest_captured_odds()
-      else
-        {[], nil}
-      end
-
-    dashboard_error = dashboard_error(recommendations_error, latest_odds_error, latest_odds)
-
-    {recommendations, latest_odds, dashboard_error}
-  end
-
-  defp load_recommendations(start_at, end_at) do
-    recommendations =
+    recs =
       from(r in ValueRecommendation,
         join: f in assoc(r, :fixture),
-        where: f.kickoff_at >= ^start_at and f.kickoff_at <= ^end_at,
-        where: r.status in ["new", "notified", "accepted", "open"],
+        where:
+          f.kickoff_at >= ^start_at and f.kickoff_at <= ^end_at and
+            r.status in ["new", "notified", "accepted", "open"],
         order_by: [desc: r.ev_percentage, desc: r.confidence_score],
         preload: [
           fixture: [:league, :home_team, :away_team],
@@ -179,66 +109,44 @@ defmodule PredictorWeb.DashboardLive do
         limit: 100
       )
       |> Repo.all()
+      |> filter_memory(params)
 
-    {recommendations, nil}
+    latest = Repo.one(from(o in OddsSnapshot, select: max(o.captured_at)))
+    {recs, latest, nil}
   rescue
-    error in [DBConnection.ConnectionError, Ecto.QueryError, Postgrex.Error] ->
-      Logger.warning("Unable to load dashboard recommendations: #{Exception.message(error)}")
-      {[], error}
+    e in [DBConnection.ConnectionError, Ecto.QueryError, Postgrex.Error, Ecto.NoResultsError] ->
+      Logger.error("Dashboard load failed: #{Exception.message(e)}")
+      {[], nil, "We could not load betting data. Please retry or check the scanner status."}
   end
 
-  defp load_latest_captured_odds() do
-    {latest_captured_odds(), nil}
-  rescue
-    error in [DBConnection.ConnectionError, Ecto.QueryError, Postgrex.Error] ->
-      Logger.error("Unable to load dashboard odds snapshots: #{Exception.message(error)}")
-      {[], error}
-  end
+  defp filter_memory(recs, p),
+    do:
+      Enum.filter(recs, fn r ->
+        match_text?(r.fixture.league.name, p["league"]) and
+          match_text?(r.market.name, p["market"]) and
+          match_text?(r.bookmaker.name, p["bookmaker"]) and
+          min_decimal?(r.ev_percentage, p["min_ev"]) and min_decimal?(r.odds, p["min_odds"])
+      end)
 
-  defp dashboard_error(nil, nil, _latest_odds), do: nil
-  defp dashboard_error(_recommendations_error, nil, latest_odds) when latest_odds != [], do: nil
+  defp match_text?(_, v) when v in [nil, ""], do: true
+  defp match_text?(text, v), do: String.contains?(String.downcase(text || ""), String.downcase(v))
+  defp min_decimal?(_, v) when v in [nil, ""], do: true
+  defp min_decimal?(d, v), do: Decimal.compare(d || Decimal.new(0), Decimal.new(v)) != :lt
+  defp clean(map), do: Map.reject(map, fn {_, v} -> v in [nil, ""] end)
 
-  defp dashboard_error(_recommendations_error, _latest_odds_error, _latest_odds),
-    do: "Please make sure the database is reachable and migrations have been run."
-
-  defp latest_captured_odds do
-    latest_ids =
-      from(o in OddsSnapshot,
-        distinct: [o.fixture_id, o.bookmaker_id, o.market_id, o.selection_id],
-        order_by: [
-          asc: o.fixture_id,
-          asc: o.bookmaker_id,
-          asc: o.market_id,
-          asc: o.selection_id,
-          desc: o.captured_at,
-          desc: o.id
-        ],
-        select: o.id,
-        limit: 100
-      )
-
-    from(o in OddsSnapshot,
-      where: o.id in subquery(latest_ids),
-      order_by: [desc: o.captured_at, desc: o.id],
-      preload: [
-        fixture: [:league, :home_team, :away_team],
-        market: [],
-        selection: [],
-        bookmaker: []
-      ]
-    )
-    |> Repo.all()
-  end
-
-  defp fixture_name(fixture), do: "#{fixture.home_team.name} vs #{fixture.away_team.name}"
-  defp format_datetime(nil), do: "—"
-  defp format_datetime(%DateTime{} = dt), do: Calendar.strftime(dt, "%b %-d, %H:%M UTC")
-  defp format_decimal(nil), do: "—"
-  defp format_decimal(decimal), do: decimal |> Decimal.round(2) |> Decimal.to_string(:normal)
-  defp format_percent(nil), do: "—"
-  defp format_percent(decimal), do: "#{format_decimal(decimal)}%"
-  defp format_rating(nil), do: "—"
-
-  defp format_rating(decimal),
-    do: "#{decimal |> Decimal.mult(100) |> Decimal.round(0) |> Decimal.to_string(:normal)} / 100"
+  defp summary(recs, latest),
+    do: %{
+      count: length(recs),
+      highest_ev:
+        Enum.map(recs, & &1.ev_percentage)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.max_by(&Decimal.to_float/1, fn -> nil end),
+      total_stake:
+        Enum.reduce(
+          recs,
+          Decimal.new(0),
+          &Decimal.add(&2, &1.recommended_stake || Decimal.new(0))
+        ),
+      last_update: latest
+    }
 end
