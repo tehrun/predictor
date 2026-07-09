@@ -31,6 +31,14 @@ defmodule PredictorWeb.DashboardLive do
         <p class="text-slate-600">
           Server-rendered LiveView table of positive expected-value opportunities for upcoming fixtures.
         </p>
+        <div class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+          <p class="font-semibold">Informational only — no guaranteed profit.</p>
+          <p>
+            Recommendations must be capped by an explicitly configured bankroll, daily/weekly/monthly limits,
+            and a per-bet maximum. Do not enable automated bet placement until positive closing-line value is proven
+            and provider terms plus jurisdiction-specific legal requirements have been reviewed.
+          </p>
+        </div>
       </header>
 
       <div

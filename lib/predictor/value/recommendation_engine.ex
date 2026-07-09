@@ -9,6 +9,7 @@ defmodule Predictor.Value.RecommendationEngine do
 
   alias Predictor.Catalog.Fixture
   alias Predictor.Odds.OddsSnapshot
+  alias Predictor.Guardrails.AuditLog
   alias Predictor.Odds
   alias Predictor.Repo
   alias Predictor.Value.{Calculator, FairOdd, ValueRecommendation}
@@ -135,11 +136,30 @@ defmodule Predictor.Value.RecommendationEngine do
   end
 
   defp schedule_closing_line_tracking({:ok, recommendation}) do
+    audit_recommendation(recommendation)
     Odds.schedule_closing_line_tracking(recommendation)
     {:ok, recommendation}
   end
 
   defp schedule_closing_line_tracking(result), do: result
+
+  defp audit_recommendation(recommendation) do
+    %AuditLog{}
+    |> AuditLog.changeset(%{
+      event_type: "recommendation_generated",
+      occurred_at: timestamp(),
+      actor: "recommendation_engine",
+      value_recommendation_id: recommendation.id,
+      details: %{
+        "odds" => Decimal.to_string(recommendation.odds),
+        "fair_probability" => Decimal.to_string(recommendation.fair_probability),
+        "ev_percentage" => Decimal.to_string(recommendation.ev_percentage),
+        "recommended_stake" => Decimal.to_string(recommendation.recommended_stake),
+        "disclaimer" => "informational only; profit is not guaranteed"
+      }
+    })
+    |> Repo.insert()
+  end
 
   defp updatable_fields do
     [
