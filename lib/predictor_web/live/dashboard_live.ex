@@ -31,12 +31,11 @@ defmodule PredictorWeb.DashboardLive do
         <p class="text-slate-600">
           Server-rendered LiveView list of positive expected-value opportunities for upcoming fixtures.
         </p>
-        <div class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
-          <p class="font-semibold">Informational only — no guaranteed profit.</p>
+        <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           <p>
-            Recommendations must be capped by an explicitly configured bankroll, daily/weekly/monthly limits,
-            and a per-bet maximum. Do not enable automated bet placement until positive closing-line value is proven
-            and provider terms plus jurisdiction-specific legal requirements have been reviewed.
+            <span class="font-semibold">Informational only — no guaranteed profit.</span>
+            Cap recommendations by configured bankroll and limits. Do not automate bet placement until positive
+            closing-line value is proven and provider terms plus legal requirements are reviewed.
           </p>
         </div>
       </header>
@@ -55,9 +54,17 @@ defmodule PredictorWeb.DashboardLive do
         </div>
         <div
           :if={!@dashboard_error and Enum.empty?(@recommendations)}
-          class="px-4 py-8 text-center text-sm text-slate-500"
+          class="px-4 py-5"
         >
-          No qualifying value bets found for upcoming fixtures yet. Run odds ingestion and the dashboard will populate once recommendations are generated.
+          <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            <p class="font-semibold text-slate-800">No qualifying value bets yet.</p>
+            <p :if={!Enum.empty?(@latest_odds)}>
+              Odds ingestion has captured data, but no upcoming fixtures currently pass the value threshold. Latest captured odds are shown below.
+            </p>
+            <p :if={Enum.empty?(@latest_odds)}>
+              Odds ingestion has not produced visible data yet. Check back after snapshots are captured and recommendations are generated.
+            </p>
+          </div>
         </div>
 
         <div
