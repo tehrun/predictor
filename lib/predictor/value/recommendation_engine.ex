@@ -141,6 +141,8 @@ defmodule Predictor.Value.RecommendationEngine do
     {:ok, recommendation}
   end
 
+  defp schedule_closing_line_tracking(result), do: result
+
   defp audit_recommendation(recommendation) do
     %AuditLog{}
     |> AuditLog.changeset(%{
@@ -158,8 +160,6 @@ defmodule Predictor.Value.RecommendationEngine do
     })
     |> Repo.insert()
   end
-
-  defp schedule_closing_line_tracking(result), do: result
 
   defp updatable_fields do
     [
