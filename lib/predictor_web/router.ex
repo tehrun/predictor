@@ -21,6 +21,7 @@ defmodule PredictorWeb.Router do
     live("/dashboard", DashboardLive, :index)
     live("/fixtures/:id", FixtureLive, :show)
     live("/bets", BetsLive, :index)
+    live("/settings/scanner", ScannerConfigLive, :edit)
   end
 
   scope "/", PredictorWeb do

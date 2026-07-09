@@ -45,6 +45,10 @@ Predictor is a Phoenix + PostgreSQL application scaffold for sports-betting odds
 
 The health check endpoint is available at `GET /health`.
 
+## Scanner settings page
+
+The scanner can be tuned from the dashboard at `/settings/scanner`. Saved values are persisted in the `scanner_settings` table and override the runtime environment defaults for future odds ingestion and recommendation jobs. Blank enabled-list fields mean all sports/leagues/markets/bookmakers are allowed.
+
 ## Real-money recommendation guardrails
 
 Outputs are informational only and are not guaranteed to produce profit. Before any real-money use, create an explicit bankroll configuration with user-supplied bankroll amount, currency, daily/weekly/monthly recommended stake limits, and a per-bet maximum stake cap. Optional cooldown settings can suppress recommendations after a configured number of consecutive losses.
