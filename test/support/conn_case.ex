@@ -20,7 +20,12 @@ defmodule PredictorWeb.ConnCase do
   end
 
   def setup_sandbox(tags) do
+    Ecto.Adapters.SQL.Sandbox.mode(Predictor.Repo, :manual)
     pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Predictor.Repo, shared: not tags[:async])
-    on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
+
+    on_exit(fn ->
+      Ecto.Adapters.SQL.Sandbox.stop_owner(pid)
+      Ecto.Adapters.SQL.Sandbox.mode(Predictor.Repo, :auto)
+    end)
   end
 end
