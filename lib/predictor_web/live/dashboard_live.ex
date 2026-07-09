@@ -29,7 +29,7 @@ defmodule PredictorWeb.DashboardLive do
         <p class="text-sm font-semibold uppercase tracking-wide text-emerald-600">Dashboard</p>
         <h1 class="text-3xl font-bold text-slate-900">Upcoming qualifying value bets</h1>
         <p class="text-slate-600">
-          Server-rendered LiveView table of positive expected-value opportunities for upcoming fixtures.
+          Server-rendered LiveView list of positive expected-value opportunities for upcoming fixtures.
         </p>
         <div class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
           <p class="font-semibold">Informational only — no guaranteed profit.</p>
@@ -50,52 +50,73 @@ defmodule PredictorWeb.DashboardLive do
       </div>
 
       <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-slate-200 text-sm">
-            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-              <tr>
-                <th class="px-4 py-3">Fixture</th>
-                <th class="px-4 py-3">League</th>
-                <th class="px-4 py-3">Market</th>
-                <th class="px-4 py-3">Selection</th>
-                <th class="px-4 py-3">Bookmaker</th>
-                <th class="px-4 py-3 text-right">Current odds</th>
-                <th class="px-4 py-3 text-right">Fair odds</th>
-                <th class="px-4 py-3 text-right">EV %</th>
-                <th class="px-4 py-3 text-right">Stake</th>
-                <th class="px-4 py-3 text-right">Confidence</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr :if={@dashboard_error}>
-                <td colspan="10" class="px-4 py-8 text-center text-amber-700">
-                  Value recommendations cannot be loaded until the database issue above is resolved.
-                </td>
-              </tr>
-              <tr :if={!@dashboard_error and Enum.empty?(@recommendations)}>
-                <td colspan="10" class="px-4 py-8 text-center text-slate-500">
-                  No qualifying value bets found for upcoming fixtures yet. Run odds ingestion and the dashboard will populate once recommendations are generated.
-                </td>
-              </tr>
-              <tr :for={rec <- @recommendations} class="hover:bg-slate-50">
-                <td class="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
-                  <.link navigate={~p"/fixtures/#{rec.fixture_id}"} class="text-emerald-700 hover:underline">
-                    {fixture_name(rec.fixture)}
-                  </.link>
-                  <div class="text-xs font-normal text-slate-500">{format_datetime(rec.fixture.kickoff_at)}</div>
-                </td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-700">{rec.fixture.league.name}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-700">{rec.market.name}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-700">{rec.selection.name}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-700">{rec.bookmaker.name}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-right font-semibold">{format_decimal(rec.odds)}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-right">{format_decimal(rec.fair_odds)}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-right text-emerald-700 font-semibold">{format_percent(rec.ev_percentage)}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-right">{format_decimal(rec.recommended_stake)}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-right">{format_rating(rec.confidence_score)}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div :if={@dashboard_error} class="px-4 py-8 text-center text-sm text-amber-700">
+          Value recommendations cannot be loaded until the database issue above is resolved.
+        </div>
+        <div
+          :if={!@dashboard_error and Enum.empty?(@recommendations)}
+          class="px-4 py-8 text-center text-sm text-slate-500"
+        >
+          No qualifying value bets found for upcoming fixtures yet. Run odds ingestion and the dashboard will populate once recommendations are generated.
+        </div>
+
+        <div
+          :if={!@dashboard_error and !Enum.empty?(@recommendations)}
+          class="divide-y divide-slate-100"
+        >
+          <article
+            :for={rec <- @recommendations}
+            class="grid gap-4 px-4 py-4 transition hover:bg-slate-50 sm:px-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1.1fr)_minmax(0,1.2fr)_auto] lg:items-center"
+          >
+            <div class="min-w-0 space-y-1">
+              <.link
+                navigate={~p"/fixtures/#{rec.fixture_id}"}
+                class="block truncate font-semibold text-slate-900 hover:text-emerald-700 hover:underline"
+              >
+                {fixture_name(rec.fixture)}
+              </.link>
+              <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                <span>{rec.fixture.league.name}</span>
+                <span>{format_datetime(rec.fixture.kickoff_at)}</span>
+              </div>
+            </div>
+
+            <div class="min-w-0">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{rec.market.name}</p>
+              <p class="truncate text-sm font-semibold text-slate-900">{rec.selection.name}</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4 lg:grid-cols-[auto_auto_auto_auto] lg:items-center lg:justify-end">
+              <div class="col-span-2 sm:col-span-1 lg:col-span-1">
+                <.bookmaker_badge name={rec.bookmaker.name} />
+              </div>
+              <div>
+                <p class="text-xs text-slate-500">Odds</p>
+                <p class="font-bold text-slate-900">{format_decimal(rec.odds)}</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500">EV</p>
+                <.ev_badge value={rec.ev_percentage} />
+              </div>
+              <div>
+                <p class="text-xs text-slate-500">Stake</p>
+                <p class="font-semibold text-slate-900">{format_decimal(rec.recommended_stake)}</p>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3 text-xs text-slate-500 lg:block lg:border-t-0 lg:pt-0 lg:text-right">
+              <div class="flex flex-wrap items-center gap-2 lg:mb-2 lg:justify-end">
+                <span>Fair {format_decimal(rec.fair_odds)}</span>
+                <.confidence_badge value={rec.confidence_score} />
+              </div>
+              <.link
+                navigate={~p"/fixtures/#{rec.fixture_id}"}
+                class="inline-flex items-center rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50"
+              >
+                View fixture
+              </.link>
+            </div>
+          </article>
         </div>
       </div>
 
@@ -142,6 +163,36 @@ defmodule PredictorWeb.DashboardLive do
         </div>
       </div>
     </section>
+    """
+  end
+
+  attr(:value, :any, required: true)
+
+  defp ev_badge(assigns) do
+    ~H"""
+    <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 ring-1 ring-inset ring-emerald-200">
+      {format_percent(@value)}
+    </span>
+    """
+  end
+
+  attr(:value, :any, required: true)
+
+  defp confidence_badge(assigns) do
+    ~H"""
+    <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+      Confidence {format_rating(@value)}
+    </span>
+    """
+  end
+
+  attr(:name, :string, required: true)
+
+  defp bookmaker_badge(assigns) do
+    ~H"""
+    <span class="inline-flex max-w-full items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">
+      <span class="truncate">{@name}</span>
+    </span>
     """
   end
 
