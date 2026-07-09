@@ -6,16 +6,16 @@
     <.link navigate={~p"/settings/scanner"} class="hover:text-emerald-700">Scanner settings</.link>
   </nav>
 </header>
-<main class="container">
+<main class="min-h-screen bg-slate-50/30">
   <div
     :if={Phoenix.Flash.get(@flash, :info)}
-    class="mx-auto mt-4 max-w-5xl rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-medium text-emerald-800"
+    class="mx-auto mt-4 max-w-7xl rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-medium text-emerald-800"
   >
     {Phoenix.Flash.get(@flash, :info)}
   </div>
   <div
     :if={Phoenix.Flash.get(@flash, :error)}
-    class="mx-auto mt-4 max-w-5xl rounded-xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-medium text-rose-800"
+    class="mx-auto mt-4 max-w-7xl rounded-xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-medium text-rose-800"
   >
     {Phoenix.Flash.get(@flash, :error)}
   </div>
